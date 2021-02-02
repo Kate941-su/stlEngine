@@ -40,6 +40,20 @@ void velocity(int NP,double RY[],double VX[],double VY[],double DPY,double *TEMP
 
 void partition(double RY[],double VX[] , double VY[] ,double PPY,double TEMP_PART_LIST[NWRITE][PARTNUM],double PRESS_PART_LIST[NWRITE][PARTNUM],int T_WRITE);
 
+
+//return max
+double judge_max(double array[],int len_array){
+	int i;
+	double max=0.0;
+	for(i=0;i<len_array;i++){
+		if (array[i]>max){
+			max=array[i];
+		}
+	}
+	return max;
+}
+
+
 /*配列要素の合計を出す関数*/
 template <typename T> T array_sum(T array[]){
 	T sum=0;
@@ -48,6 +62,19 @@ template <typename T> T array_sum(T array[]){
 	}
 	return sum;
 }
+
+int bigger(int a,int b,int *UP_DOWN_FLAG){
+	*UP_DOWN_FLAG=0;
+	if(a>b){
+		*UP_DOWN_FLAG=1;
+		printf("up->down");
+		return a;
+	}else{
+		printf("down->up");
+		return b;
+	}
+};
+
 
 /*ボルツマン分布生成*/
 double normal(void) {
@@ -127,7 +154,9 @@ int main(int argc,char *argv[]) {
 	FILE *part_temp_file;
 	FILE *all_condition_file;
 
-/*パス作成のための変数*/
+
+
+	//flexible dir name
 	char name_kin[40];
 	char name_pot[50];
 	char name_tot[50];
