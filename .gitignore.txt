@@ -1,0 +1,14 @@
+#ファイル
+*.exe
+*.dat
+#ディレクトリ
+plotdata/
+openmp/
+過去のデータ/
+過去の確認/
+原本/
+物理学会/
+icc/
+.vs/
+.vscode/
+_pycache_/

@@ -9,19 +9,14 @@
 #define Nx 15
 #define Ny 30
 #define PARTNUM 2
-#define NUM (Nx*Ny)
-
-//server
-//#define NSTEPS 1500000000
-//local test
-#define NSTEPS 2000000
-
-#define NDEVIDE 100000
+#define NB (Nx*Ny)
+#define NSTEPS 2000
+#define NDEVIDE 100
 #define NWRITE (NSTEPS/NDEVIDE)
 #define TEMPL 4.0
-#define OMEGA_0 -0.01
-#define P 0.5
-#define KIZAMI 3e-4
+#define PROBABIRITY 1.1
+#define SIZE_DP 0.0
+
 //prototype function
 void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int N_GX, int N_GY, int NEIGHBOR_ROW[], int NEIGHBOR_COL[], int NEITGHBOR_LEN, int PAIRLIST[][10], double LX, int **G_MAP);
 
@@ -29,17 +24,17 @@ void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX
 
 void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,double *FPP,double LY,double *h_ss,double *d_w);
 
-void piston_move_u(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY);
+void piston_move_u(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double F_RIGHT,double F_LEFT,double RX[]);
 
-void piston_move_d(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY);
+void piston_move_d(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double F_RIGHT,double F_LEFT,double RX[]);
 
 void velocity(int NP,double RY[],double VX[],double VY[],double DPY,double *TEMP_D,double *TEMP_U,int *ND,int*NU ,int N_U_list[],double *TEMP);
 
-void partition(double RY[],double VX[] , double VY[] ,double PPY,double TEMP_PART_LIST[NWRITE][PARTNUM],double PRESS_PART_LIST[NWRITE][PARTNUM],int T_WRITE);
+void partition(double RY[],double VX[] , double VY[] ,double PPY,double DPY,double TEMP_PART_LIST_DOWN[NWRITE][PARTNUM/2],double TEMP_PART_LIST_UP[NWRITE][PARTNUM/2],double PRESS_PART_LIST_DOWN[NWRITE][PARTNUM/2],double PRESS_PART_LIST_UP[NWRITE][PARTNUM/2],int T_WRITE,int NP);
 
 
 //return max
-double judge_max(double array[],int len_array){
+double judge_max(double array[],int len_array,int *u_num){
 	int i;
 	double max=0.0;
 	for(i=0;i<len_array;i++){
@@ -51,23 +46,35 @@ double judge_max(double array[],int len_array){
 }
 
 
+double judge_mini(double array[],int len_array,int *l_num){
+	int i;
+	double mini=1000.0;
+	for (i=0;i<len_array;i++){
+		if(array[i]<mini){
+			mini=array[i];
+			*l_num=i;
+		}
+	}
+	return mini;
+
+}
+
 //sumnation array index
 
-int int_array_sum(int array[]){
+int int_array_sum(int NP,int array[NP]){
 //    int len;
-    int i;
+    int i,N;
     int sum=0;
-//    len=sizeof(array)/sizeof(int);
-    for (i=0;i<NUM;i++){
+    for (i=0;i<NP;i++){
         sum+=array[i];
     }
     return sum;
 }
 
-double double_array_sum(double array[]){
-    int i;
+double double_array_sum(int NP,double array[NP]){
+    int i,N;
     double sum=0;
-    for (i=0;i<NUM;i++){
+    for (i=0;i<NP;i++){
         sum+=array[i];
     }
     return sum;
@@ -126,10 +133,55 @@ void elastic(int NP, double RY[], double VY[], double LY) {
 	}
 }
 
+void forbid_area(double RX[],double RY[],double RX_B[],double VX[],double VY[],double F_LEFT,double F_RIGHT,double F_TOP,double F_UNDER,int NP){
+    int i;
+	double RX_D;
+    for(i=0;i<NP;i++){
+        //both side
+		RX_D=fabs(RX[i]-RX_B[i]);
+        if((F_TOP+0.5)>RY[i] && (F_UNDER-0.5)<RY[i] && RX_D<1.0){
+            if(RX_B[i]>(F_RIGHT+0.5) && (F_RIGHT+0.5>RX[i])){
+                VX[i]=-VX[i];
+            }
+			else if (RX_B[i]<(F_LEFT-0.5) && RX[i]>(F_LEFT-0.5) && RX_D<1.0){
+				VX[i]=-VX[i];
+			}
+        }
+    }
+}
 
 
+void forbid_area2(double RX[],double RY[],double RY_B[],double VX[],double VY[],double F_LEFT,double F_RIGHT,double F_TOP,double F_UNDER,int NP){
+    int i;
+	for(i=0;i<NP;i++){
+        if(F_RIGHT+0.5>RX[i] && F_LEFT-0.5<RX[i]){
+			
+            if(F_TOP+0.5<RY_B[i] && F_TOP+0.5>RY[i]){
+				VY[i]=-VY[i];
+				}
+        
+		    if(F_UNDER-0.5>RY_B[i] && F_UNDER-0.5<RY[i]){
+				VY[i]=-VY[i];
+				}
+        }
+	}
+}
 
-int main(int argc,char *argv[]) {
+void fix(double RX[],double RY[],double VX[],double VY[],double F_LEFT,double F_RIGHT,double F_TOP,double F_UNDER,int NP){
+	int i;
+	double temp_x,temp_y;
+	for (i=0;i<NP;i++){
+		if (F_RIGHT>RX[i] && F_LEFT<RX[i] && F_TOP>RY[i] && F_UNDER<RY[i]){
+			temp_x=VX[i];
+			temp_y=VY[i];
+			VX[i]=-1*fabs(temp_x);
+			VY[i]=-1*fabs(temp_y);
+		}
+	}
+
+}
+
+int main(void) {
 	//FILEopen
 	FILE *kin_file;
 	FILE *pot_file;
@@ -148,13 +200,19 @@ int main(int argc,char *argv[]) {
 	FILE *lxly;
     FILE *vx_read;
     FILE *vy_read;
-	FILE *mini_file;
+	FILE *press_u_file;
+	FILE *press_d_file;
 	//for animation
 	FILE *rx_list;
 	FILE *ry_list;
 	FILE *theta_file;
     FILE *efile;
-
+    FILE *dpx_file;
+    FILE *pwx_file;
+    FILE *dwx_file;
+    FILE *pwy_file;
+    FILE *dwy_file;
+    FILE *rf_file;
 
 
 	FILE *press_file;
@@ -163,10 +221,8 @@ int main(int argc,char *argv[]) {
 	FILE *part_temp_file;
 	FILE *all_condition_file;
 
-
-
 	//flexible dir name
-	char name_kin[40];
+	char name_kin[50];
 	char name_pot[50];
 	char name_tot[50];
 	char name_ene[50];
@@ -175,15 +231,36 @@ int main(int argc,char *argv[]) {
 	char name_ome[50];
 	char name_the[50];
 	char name_e[50];
-	char name_mini[50];
+	char name_press_d[50];
+	char name_press_u[50];
 	char name_press[50];
 	char name_temp[50];
 	char name_press_part[50];
 	char name_temp_part[50];
 	char name_all_condition[50];
+/*
+	int A=10*PROBABIRITY;
+	switch (A)
+	{
+	case 1:
+		char plotdata[20]="./plotdata/pro1temp";		
+		break;
+	case 2:
+		char plotdata[20]="./plotdata/pro2temp";		
+		break;
+	case 3:
+		char plotdata[20]="./plotdata/pro3temp";		
+		break;
+	case 4:
+		char plotdata[20]="./plotdata/pro4temp";		
+		break;
+	default:
+		char plotdata[20]="./plotdata/pro5temp";		
+		break;
+	}
+*/
 
-	char plotdata[20]="./plotdata/m2a_num";
-
+	char plotdata[20]="./plotdata/ani5temp";
 	char c_kin[20]="/kin.dat";
 	char c_pot[20]="/pot.dat";
 	char c_tot[20]="/tot.dat";
@@ -193,7 +270,8 @@ int main(int argc,char *argv[]) {
 	char c_ome[20]="/omega.dat";
 	char c_the[20]="/theta.dat";
 	char c_e[20]="/e_lis.dat";
-	char c_mini[20]="/mini.dat";
+	char c_press_d[20]="/press_d.dat";
+	char c_press_u[20]="/press_u.dat";
 	char c_press[20]="/press.dat";
 	char c_temp[20]="/temp.dat";
 	char c_press_part[20]="/press_part.dat";
@@ -208,25 +286,11 @@ int main(int argc,char *argv[]) {
 	const double dy = dx;
 	const double lx = dx * Nx;
 	const double ly = dy * Ny;
-
-
-//コマンドライン引数から変更するためのパラメータ////
-    //温度について
+	const double temp = 2.5;
 	const double temp_l = TEMPL;
-//	const double temp_l=atof(argv[1]);
-
-	//確率について
-	double probabirity=P;
-//	double probabirity=(double) 0.1*atoi(argv[1]);
-
-	int P_dummy=10*(1-probabirity);
-
-    //粒子数について
-    const int N=NUM;
-////////////////////////////////////////////////
 	const double temp_h = 1.0;
 	const double temp_p = (temp_h + temp_l) * 0.5;
-	const double h = KIZAMI;
+	const double h = 1e-3;
 	const double h_rev=1/h;
 	const double h2 = 0.5 * h * h;
 	const int nout = NSTEPS / 10;
@@ -243,6 +307,7 @@ int main(int argc,char *argv[]) {
 	double kin_u[2]={0.0,0.0};
 	double momentum_d[2]={0.0,0.0};
 	double kin_d[2]={0.0,0.0};
+
 	int up_hit=0;
 	int down_hit=0;
     int up_through=0;
@@ -259,39 +324,23 @@ int main(int argc,char *argv[]) {
 	double ts = 0;
 	double te = 0;
 
-	double rx[N];
-	double rx_b[N];
-	double ry[N];
-	double ry_b[N];
-	double vx[N];
-	double vy[N];
-	double vy_b[N];
-	double ax[N];
-	double ay[N];
-	double ay_b[N];
+	double rx_p[NB];
+	double ry_p[NB];
+	double vx_p[NB];
+	double vy_p[NB];
+	double ax_p[NB];
+	double ay_p[NB];
 	double sum_vx=0.0;
 	double sum_vy=0.0;
-	int pairlist[N][10];
-	int pairlist_innit[N][10];
-/*
+
 	//high speed parametor
 	const double l_gx = 0.448;
 	const double l_gy = l_gx;
 	const int n_gx = ceil(lx / l_gx) + 6;//袖領域のため
 	const int n_gy = ceil(ly / l_gy) + 6 + ceil(0.25*lx/l_gx);//袖領域のため
 	const int n_g_all = n_gx * n_gy;
-*/
-	//ぴったりにする
-	int bo=(lx/0.4);
-	double l_gx_d=lx/bo;
-	const double l_gx = l_gx_d;
-	const double l_gy = l_gx;
-	const int n_gx = ceil(lx / l_gx) +6 ;//袖領域のため
-	const int n_gy = ceil((ly / l_gy)+(0.25*lx)/l_gy)+6;//袖領域のため
-	const int n_g_all = n_gx * n_gy;
-
-
-
+	int pairlist[NB][10];
+	int pairlist_innit[NB][10];
 
     int **g_map;
     g_map = (int**)malloc(sizeof(int*)*n_gy);
@@ -339,16 +388,16 @@ int main(int argc,char *argv[]) {
 	const double rc = pow(2.0, (double)1 / 6);
 	double rc2 = rc * rc;
 	double mini = 1000.0;
-	double mini_b=1000.0;
+
 	//debug parameter
 	double FX=0.0;
 	double FY=0.0;
 
     //flywheel
-    const double rf=10;//hankei
-    const int rhof=2*pow(10,pow_num);//density of fw
+    const double rf=0.25*lx;//hankei
+    const int rhof=2*0.8*pow(10,pow_num);//density of fw
     const int gamma=100;//dumping by rotarion
-//    const double mf=M_PI*rf*rf*rhof;
+    const double mf=M_PI*rf*rf*rhof;
     const double ia=0.5*M_PI*rhof*rf*rf*rf*rf;//inartia
 	const double ria=1/ia;
 
@@ -401,13 +450,13 @@ int main(int argc,char *argv[]) {
     //connect dis-p to shaft
     double lscos=ls*(sqrt(ls*ls-rf*rf)/ls);
     //phai
-    double dwx=0.5*lx;
+    double dwx=2*rf;
 	double dwx_b;
     double dwy=dpy+ls;
     double dwy_b;
 
     //connect pow-p to shaft
-    double pwx=0.5*lx-rf;
+    double pwx=3*rf;
 	double pwx_b;
     double pwy=lsp+ppy0;
 	double pwy_b;
@@ -415,7 +464,7 @@ int main(int argc,char *argv[]) {
     //initial arg,vel,acc
     double theta=0.0;
 
-    double omega_0=OMEGA_0;
+    double omega_0=-0.01;
     double omega=omega_0;
 
     double alpha=0.0;
@@ -426,8 +475,7 @@ int main(int argc,char *argv[]) {
 	//work and thermalefficiency
 	double w=0.0;
 	double e=0.0;
-	double one_cycle_w=0;
-	double one_cycle_q_in=0;
+
 
 	//hit or through(piston)
 	int hit_piston=0;
@@ -446,9 +494,7 @@ int main(int argc,char *argv[]) {
 	int N_U=0;
 	int N_D_b=0;
 	int N_U_b=0;
-    int N_U_init[N];
-    int N_U_l[N];
-	int N_U_l_b_lis[N];
+
     int N_U_l_b;
     int N_U_init_sum=0;
     int N_U_l_sum=0;
@@ -483,7 +529,7 @@ int main(int argc,char *argv[]) {
     double h1_d=0.0;
 
     //prepare read file
-    int num=N;
+/*
     char moge[5];
     char vx_name[] = "vx";
     char vy_name[] = "vy";
@@ -495,7 +541,7 @@ int main(int argc,char *argv[]) {
     sprintf(moge,"%d",num);
     sprintf(vx_lis,"%s%s%s",vx_name,moge,text);
     sprintf(vy_lis,"%s%s%s",vy_name,moge,text);
-
+*/
 
 //big array
 
@@ -504,15 +550,93 @@ int main(int argc,char *argv[]) {
     double theta_lis[NWRITE];
 	double t_lis[NWRITE];
 
+
+	k = 0;
+	for (i = 0;i < Nx;i++) {
+		for (j = 0;j < Ny;j++) {
+			rx_p[k] = i * dx + dx * 0.5;
+			ry_p[k] = j * dy + dy * 0.5;
+			vx_p[k] = sqrt(temp) * normal();
+			vy_p[k] = sqrt(temp) * normal();
+			ax_p[k] = 0.0;
+			ay_p[k] = 0.0;
+			k = k + 1;
+		}
+	}
+
+
 //11/30追加コンテンツ
-	const double ack_rot=0.125*M_PI;
-    const double ack_circle =2*M_PI;
+	const double ack_rot=M_PI*0.5*0.125;
 	double rot=0.0;
-    double circle=0.0;
 	int rot_num=0;
     int b_num=0;
-    int circle_num=0;
 
+   //12/24 DPにあつみを持たせる準備
+    double dp_ty=dpy0;
+	double dpy_t=dpy0+SIZE_DP*ly;
+    double dpy_u=dpy0-SIZE_DP*ly;
+	double dpy_u_b;
+	double dpy_t_b;
+    double f_left=0.05*lx;
+    double f_right=0.95*lx;
+    int count_fzone=0;
+    int count_buffer[NB];
+
+    for (i=0;i<NB;i++){
+        count_buffer[i]=-1;
+    }
+
+    for (i=0;i<NB;i++){
+        if(f_left-0.5 > rx_p[i] || f_right+0.5 < rx_p[i] ||dpy_t+0.5 < ry_p[i] || dpy_u-0.5 > ry_p[i]){
+            count_buffer[count_fzone]=i;
+            count_fzone+=1;
+        }
+    }
+    double *rx;
+    double *vx;
+    double *ry;
+    double *vy;
+    double *ay;
+    double *ax;
+
+    double *rx_b;
+    double *ry_b;
+    double *vx_b;
+    double *vy_b;
+    double *ax_b;
+    double *ay_b;
+
+    int xxx,xx=0;
+    rx=(double*)malloc(sizeof(double)*count_fzone);
+    ry=(double*)malloc(sizeof(double)*count_fzone);
+    vx=(double*)malloc(sizeof(double)*count_fzone);
+    vy=(double*)malloc(sizeof(double)*count_fzone);
+    ax=(double*)malloc(sizeof(double)*count_fzone);
+    ay=(double*)malloc(sizeof(double)*count_fzone);
+
+    rx_b=(double*)malloc(sizeof(double)*count_fzone);
+    ry_b=(double*)malloc(sizeof(double)*count_fzone);
+    vx_b=(double*)malloc(sizeof(double)*count_fzone);
+    vy_b=(double*)malloc(sizeof(double)*count_fzone);
+    ax_b=(double*)malloc(sizeof(double)*count_fzone);
+    ay_b=(double*)malloc(sizeof(double)*count_fzone);
+
+    for (i=0;i<count_fzone;i++){
+        xxx=count_buffer[i];
+        rx[i]=rx_p[xxx];
+        ry[i]=ry_p[xxx];
+        vx[i]=vx_p[xxx];
+        vy[i]=vy_p[xxx];
+        ax[i]=ax_p[xxx];
+        ay[i]=ay_p[xxx];   
+        xx+=1;    
+    }
+
+    int N =count_fzone;
+    /////////////////////////////
+    int N_U_init[N];
+    int N_U_l[N];
+	int N_U_l_b_lis[N];
 /*
 	double temp_d_lis[NWRITE];
 	double temp_u_lis[NWRITE];
@@ -527,9 +651,10 @@ int main(int argc,char *argv[]) {
 	double total_e_lis[NWRITE];
 */
 
-	double temp_part_lis[NWRITE][PARTNUM];
-	double press_part_lis[NWRITE][PARTNUM];
-
+	double temp_part_lis_up[NWRITE][PARTNUM/2];
+	double temp_part_lis_down[NWRITE][PARTNUM/2];
+	double press_part_lis_up[NWRITE][PARTNUM/2];
+	double press_part_lis_down[NWRITE][PARTNUM/2];
 	for (i = 0;i < N;i++) {
 		for (j = 0;j < 10;j++) {
 			pairlist[i][j] = -1;
@@ -546,7 +671,7 @@ int main(int argc,char *argv[]) {
 
 
 ///read vx,vy,file
-
+/*
     vx_read=fopen(vx_lis,"r");
     vy_read=fopen(vy_lis,"r");
 
@@ -569,7 +694,7 @@ int main(int argc,char *argv[]) {
 			k = k + 1;
 		}
 	}
-
+*/
     //initialize N_list
     for(i=0;i<N;i++){
         N_U_init[i]=-1;
@@ -593,9 +718,11 @@ int main(int argc,char *argv[]) {
 	}
 
 	for(i<0;i<NWRITE;i++){
-		for(j=0;j<PARTNUM;j++){
-			temp_part_lis[i][j]=0.0;
-			press_part_lis[i][j]=0.0;
+		for(j=0;j<PARTNUM/2;j++){
+			temp_part_lis_up[i][j]=0.0;
+			press_part_lis_down[i][j]=0.0;
+			temp_part_lis_down[i][j]=0.0;
+			press_part_lis_up[i][j]=0.0;
 		}
 	}
 
@@ -606,33 +733,45 @@ ppy_b=ppy0;
 
 velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D_b,&N_U_b,N_U_init,&temp_all);
 velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
-N_U_init_sum=int_array_sum(N_U_init);
-//rx_list=fopen("./plotdata/rx_list.dat","w");
-//ry_list=fopen("./plotdata/ry_list.dat","w");
-//dp=fopen("./plotdata/pack2_wt/dp.dat","w");
-//py=fopen("./plotdata/pack2_wt/pp.dat","w");
+N_U_init_sum=int_array_sum(N,N_U_init);
 
 
-sprintf(name_kin,"%s%d%s",plotdata,(int) N,c_kin);
-sprintf(name_pot,"%s%d%s",plotdata,(int) N,c_pot);
-sprintf(name_tot,"%s%d%s",plotdata,(int) N,c_tot);
-sprintf(name_ene,"%s%d%s",plotdata,(int) N,c_ene);
-sprintf(name_dis,"%s%d%s",plotdata,(int) N,c_dis);
-sprintf(name_pow,"%s%d%s",plotdata,(int) N,c_pow);
-sprintf(name_ome,"%s%d%s",plotdata,(int) N,c_ome);
-sprintf(name_the,"%s%d%s",plotdata,(int) N,c_the);
-sprintf(name_e,"%s%d%s",plotdata,(int) N,c_e);
-sprintf(name_mini,"%s%d%s",plotdata,(int) N,c_mini);
-sprintf(name_press,"%s%d%s",plotdata,(int) N,c_press);
-sprintf(name_temp,"%s%d%s",plotdata,(int) N,c_temp);
-sprintf(name_press_part,"%s%d%s",plotdata,(int) N,c_press_part);
-sprintf(name_temp_part,"%s%d%s",plotdata,(int) N,c_temp_part);
-sprintf(name_all_condition,"%s%d%s",plotdata,(int) N,c_all_condition);
-mini_file=fopen(name_mini,"w");
+//animationfile open
+rx_list=fopen("./plotdata/anidat/makefig/rx_list.dat","w");
+ry_list=fopen("./plotdata/anidat/makefig/ry_list.dat","w");
+dwx_file=fopen("./plotdata/anidat/makefig/dwx.dat","w");
+dwy_file=fopen("./plotdata/anidat/makefig/dwy.dat","w");
+pwx_file=fopen("./plotdata/anidat/makefig/pwx.dat","w");
+pwy_file=fopen("./plotdata/anidat/makefig/pwy.dat","w");
+dp=fopen("./plotdata/anidat/makefig/dp.dat","w");
+py=fopen("./plotdata/anidat/makefig/pp.dat","w");
+theta_file=fopen("./plotdata/anidat/makefig/theta.dat","w");
+
+
+rf_file=fopen("./plotdata/anidat/makefig/rf.dat","w");
+fprintf(rf_file,"%lf",rf);
+fclose(rf_file);
+dpx_file=fopen("./plotdata/anidat/makefig/dpx.dat","w");
+fprintf(dpx_file,"%lf",dpx);
+fclose(dpx_file);
+
+sprintf(name_kin,"%s%d%s",plotdata,(int) temp_l,c_kin);
+sprintf(name_pot,"%s%d%s",plotdata,(int) temp_l,c_pot);
+sprintf(name_tot,"%s%d%s",plotdata,(int) temp_l,c_tot);
+sprintf(name_ene,"%s%d%s",plotdata,(int) temp_l,c_ene);
+sprintf(name_dis,"%s%d%s",plotdata,(int) temp_l,c_dis);
+sprintf(name_pow,"%s%d%s",plotdata,(int) temp_l,c_pow);
+sprintf(name_ome,"%s%d%s",plotdata,(int) temp_l,c_ome);
+sprintf(name_the,"%s%d%s",plotdata,(int) temp_l,c_the);
+sprintf(name_e,"%s%d%s",plotdata,(int) temp_l,c_e);
+sprintf(name_press_d,"%s%d%s",plotdata,(int) temp_l,c_press_d);
+sprintf(name_press_u,"%s%d%s",plotdata,(int) temp_l,c_press_u);
+sprintf(name_press,"%s%d%s",plotdata,(int) temp_l,c_press);
+sprintf(name_temp,"%s%d%s",plotdata,(int) temp_l,c_temp);
+sprintf(name_press_part,"%s%d%s",plotdata,(int) temp_l,c_press_part);
+sprintf(name_temp_part,"%s%d%s",plotdata,(int) temp_l,c_temp_part);
+sprintf(name_all_condition,"%s%d%s",plotdata,(int) temp_l,c_all_condition);
 all_condition_file=fopen(name_all_condition,"w");
-efile = fopen(name_e,"w");
-omega_file=fopen(name_ome,"w");
-theta_file=fopen(name_the,"w");
 //-------------start mainroop------------------
 	ts = omp_get_wtime();
 	for (t = 1;t <= NSTEPS;t++)
@@ -642,27 +781,18 @@ theta_file=fopen(name_the,"w");
 			rx_b[i]=rx[i];
 			ry_b[i]=ry[i];
 			vy_b[i]=vy[i];
+            ax_b[i]=ax[i];
 			ay_b[i]=ay[i];
 			N_U_l_b_lis[i]=N_U_l[i];
 		}
-/*
-		if(t%10==0){
-			rx_list=fopen("./plotdata/rx_list.dat","w");
-			ry_list=fopen("./plotdata/ry_list.dat","w");
-			for (i=0;i<N;i++){
-				fprintf(rx_list,"%lf    ",rx[i]);
-				fprintf(ry_list,"%lf    ",ry[i]);
-			}
-			fclose(rx_list);
-			fclose(ry_list);
-		}
-*/
-		if (mini_b>mini){
-			fprintf(mini_file,"%lf\n",mini);
-			mini_b=mini;
-		}
+
+
+
+
 
 			dpy_b=dpy;	
+			dpy_u_b=dpy_u;
+			dpy_t_b=dpy_t;
 			dwx_b=dwx;
 			dwy_b=dwy;
 			ppy_b=ppy;	
@@ -677,10 +807,29 @@ theta_file=fopen(name_the,"w");
 			t_write+=1;
 			t_lis[t_write-1] = t * h;
 			//圧力などの定義
-			partition(ry,vx,vy,ppy,temp_part_lis,press_part_lis,t_write);
+			partition(ry,vx,vy,ppy,dpy,temp_part_lis_down,temp_part_lis_up,press_part_lis_down,press_part_lis_up,t_write,N);
 		}
 
+		//for animaiton
 
+            if (t%NDEVIDE == 0){
+                for (i=0;i<N;i++){
+                    fprintf(rx_list,"%lf    ",rx[i]);
+                }
+                fprintf(rx_list,"\n");
+
+                for (i=0;i<N;i++){
+                    fprintf(ry_list,"%lf    ",ry[i]);
+                }
+                fprintf(ry_list,"\n");
+				fprintf(dp,"%lf\n",dpy);
+				fprintf(py,"%lf\n",ppy);
+                fprintf(pwx_file,"%lf\n",pwx);
+                fprintf(pwy_file,"%lf\n",pwy);
+                fprintf(dwx_file,"%lf\n",dwx);
+                fprintf(dwy_file,"%lf\n",dwy);
+                fprintf(theta_file,"%lf\n",theta);               
+            }
 
 		//verlet
 		for (i = 0;i < N;i++) {
@@ -705,6 +854,16 @@ theta_file=fopen(name_the,"w");
 
 
 
+	if(judge_max(ry,N,&b_num)>ppy || judge_max(rx,N,&b_num)>2*lx){
+		printf("problem over p num = %d\nthis value has rx:%lf,ry:%lf,ax:%lf,ay:%lf,\nand t is %d",b_num,rx[b_num],ry[b_num],ax_b[b_num],ay_b[b_num],t);
+		break;
+	}
+
+	if(judge_mini(ry,N,&b_num)<0.0 || judge_mini(rx,N,&b_num)<-2*lx){
+		printf("problem under p num = %d\nthis value has rx:%lf,ry:%lf,ax:%lf,ay:%lf,\nand t is %d",b_num,rx[b_num],ry[b_num],ax_b[b_num],ay[b_num],t);
+		break;
+	}
+
 		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 
 		//cliculate force		
@@ -716,8 +875,8 @@ theta_file=fopen(name_the,"w");
 			vy[i] = vy[i] + ay[i] * h * 0.5;
 		}
 
-		sum_vx=double_array_sum(vx);
-		sum_vy=double_array_sum(vy);
+		sum_vx=double_array_sum(N,vx);
+		sum_vy=double_array_sum(N,vy);
 
 		//verocity verlet for piston
 		ddpy=sqrt(pow((dwx-dpx),2)+pow((dwy-dpy),2))-ls;
@@ -727,6 +886,8 @@ theta_file=fopen(name_the,"w");
 		pwx_b=pwx;
 		pwy_b=pwy;
 		dpy+=dpv*h+0.5*dpa*h*h;
+		dpy_u=dpy-SIZE_DP*ly;
+		dpy_t=dpy+SIZE_DP*ly;
 		ppy+=ppv*h+0.5*ppa*h*h;
 		theta+=omega*h+0.5*alpha*h*h;
 		dtheta=omega*h+0.5*alpha*h*h;
@@ -734,7 +895,7 @@ theta_file=fopen(name_the,"w");
 		//restraint dynamics
 
 		//about disp-p
-		dwx=0.5*lx+rf*sin(theta);
+		dwx=2*rf+rf*sin(theta);
 		dwy=ls+dpy0+rf*(1-cos(theta));
 		drdx=dwx-dpx;
 		drdx_b=dwx_b-dpx;
@@ -742,7 +903,7 @@ theta_file=fopen(name_the,"w");
 		drdy_b=dwy_b-dpy_b;
 		
 		//about power-p
-		pwx=0.5*lx-rf*cos(theta);
+		pwx=2*rf+rf*cos(theta);
 		pwy=lsp+ppy0+rf*sin(theta);
 		prdx=pwx-ppx;
 		prdx_b=pwx_b-ppx;
@@ -761,13 +922,15 @@ theta_file=fopen(name_the,"w");
 		Rx2=-1*lambda2*dpusai2[0];//Ry is forced from power-p
 		Ry2=-1*lambda2*dpusai2[1];
 		dpy+=0.5*h*h*Ry1*rmdp;//include restraint force
+		dpy_u=dpy-SIZE_DP*ly;
+		dpy_t=dpy+SIZE_DP*ly;
 		ppy+=0.5*h*h*Ry2*rmpp;
 		theta+=0.5*h*h*(-Ry2*cos(theta))*rf*ria;
 
 		//update
-		dwx=0.5*lx+rf*sin(theta);
+		dwx=2*rf+rf*sin(theta);
 		dwy=ls+dpy0+rf*(1-cos(theta));
-		pwx=0.5*lx-rf*cos(theta);
+		pwx=2*rf+rf*cos(theta);
 		pwy=lsp+ppy0+rf*sin(theta);
 		dpv+=dpa*h*0.5+0.5*h*Ry1*rmdp;
 		ppv+=ppa*h*0.5+0.5*h*Ry2*rmpp;
@@ -775,9 +938,9 @@ theta_file=fopen(name_the,"w");
 
 		//piston force
 		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw);
-		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_d,kin_d,&down_hit,&down_through,mdp,&delta_mom_u,&delta_kin_u,probabirity);
-		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_u,kin_u,&up_hit,&up_through,mdp,&delta_mom_d,&delta_kin_d,probabirity);
-
+		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy_t,dpy_t_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_u,kin_u,&up_hit,&up_through,mdp,&delta_mom_d,&delta_kin_d,f_right,f_left,rx);
+		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy_u,dpy_u_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_d,kin_d,&down_hit,&down_through,mdp,&delta_mom_u,&delta_kin_u,f_right,f_left,rx);
+//		fix(rx,ry,vx,vy,f_left,f_right,dpy_t,dpy_u,N);
 		//It can be better
 		ppa=fpp*rmpp;
 		dpa=fdp*rmdp;
@@ -801,7 +964,7 @@ theta_file=fopen(name_the,"w");
 
 		//boundary condition 
 		boundary(N, rx, lx);
-
+		forbid_area(rx,ry,rx_b,vx,vy,f_left,f_right,dpy_t,dpy_u,N);
 ///////temprature and pressure onthepiston under the piston/////////
 
 		velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
@@ -809,7 +972,7 @@ theta_file=fopen(name_the,"w");
 		press_all=temp_all*N/(lx*ppy);
 		press_d=temp_d*N_D/(lx*dpy);
 		press_u=temp_u*N_U/(lx*(ppy-dpy));
-        N_U_l_sum=int_array_sum(N_U_l);
+        N_U_l_sum=int_array_sum(N,N_U_l);
 
 
 		//caliclate kin-energy
@@ -827,7 +990,6 @@ theta_file=fopen(name_the,"w");
 		e=w/(0.5*ia*omega_0*omega_0+q_in);
 
 		rot=fabs(theta)-rot_num*ack_rot;
-        circle=fabs(theta)-rot_num*ack_circle;
 		if (rot>ack_rot){
 			rot-=fabs(ack_rot);
 			fprintf(all_condition_file,"%lf    %lf    %lf    %lf    %lf    %lf\n",t*h,press_all,temp_all,ppy*lx,ppy,dpy);
@@ -835,21 +997,35 @@ theta_file=fopen(name_the,"w");
 		}
 
 
-		if (circle>ack_rot){
-			circle-=fabs(ack_circle);
-			circle_num+=1;
-//			one_cycle_q_in=q_in-one_cycle_q_in;
-//			one_cycle_w=w-one_cycle_w;
-//			e=one_cycle_w/one_cycle_q_in;
-//			fprintf(efile,"%lf    %lf\n",(double) t*h,e);
+		//into the big array
+		if ((t-1)%NDEVIDE == 0)
+		{
+			e_lis[t_write-1]=e;
+			omega_lis[t_write-1]=omega;
+			theta_lis[t_write-1]=theta;
+			press_lis[t_write-1]=press_all;
+			temp_lis[t_write-1]=temp_all;
+
+/*
+		temp_d_lis[t_wirte-1]=temp_d;
+		temp_u_lis[t_wirte-1]=temp_u;
+		press_d_lis[t_wirte-1]=press_d;
+		press_u_lis[t_wirte-1]=press_u;
+		dpy_lis[t_wirte-1]=dpy;
+		ppy_lis[t_wirte-1]=ppy;
+		NU_lis[t_wirte-1]=N_U;
+		ND_lis[t_wirte-1]=N_D;
+		total_kin_lis[t_wirte-1] = total_kin;
+		pot_lis[t_wirte-1] = pot;
+		total_e_lis[t_wirte-1] = total_e;
+*/		
 		}
-
-	if (t%NDEVIDE==0){
-		fprintf(omega_file,"%lf    %lf\n",(double) t*h,omega);
-		fprintf(theta_file,"%lf    %lf\n",(double) t*h,theta);
+/*
+	if(judge_max(ry,N)>ppy){
+		printf("over pp\n");
+		break;
 	}
-
-
+*/
 }
 //end mainloop
 te = omp_get_wtime();
@@ -858,7 +1034,7 @@ printf("process time is:%lf\n",te-ts);
 printf("hit is :%d,through is %d\n",hit_piston,through_piston);
 printf("up_hit:%d,down_hit:%d\n",up_hit,down_hit);
 printf("up_through:%d,down_through:%d\n",up_through,down_through);
-printf("rotation num is : %d",circle_num);
+
 //free gmap
 for(i=0;i<n_gy;i++){
 	free(g_map[i]);
@@ -869,10 +1045,13 @@ free(g_map);
 //file output
 
 
-//press_file=fopen(name_press,"w");
-//temp_file=fopen(name_temp,"w");
-//part_press_file=fopen(name_press_part,"w");
-//part_temp_file=fopen(name_temp_part,"w");
+efile = fopen(name_e,"w");
+omega_file=fopen(name_ome,"w");
+//theta_file=fopen(name_the,"w");
+press_file=fopen(name_press,"w");
+temp_file=fopen(name_temp,"w");
+part_press_file=fopen(name_press_part,"w");
+part_temp_file=fopen(name_temp_part,"w");
 /*
 kin_file = fopen(name_kin,"w");
 pot_file = fopen(name_pot,"w");
@@ -885,17 +1064,56 @@ press_u_file=fopen(name_press_u,"w");
 */
 
 
+//write in file
+for(i=0;i<NWRITE;i++){
+		t_lis[i]-=h;
+		fprintf(omega_file,"%lf   %lf\n",t_lis[i],omega_lis[i]);
+//		fprintf(theta_file,"%lf    %lf\n",t_lis[i],theta_lis[i]);
+		fprintf(efile,"%lf    %lf\n",t_lis[i],e_lis[i]);
+		fprintf(part_temp_file,"%lf    ",t_lis[i]);
+		fprintf(part_press_file,"%lf    ",t_lis[i]);
+		for (j=0;j<PARTNUM/2;j++){
+			fprintf(part_temp_file,"%lf    ",temp_part_lis_down[i][j]);
+			fprintf(part_press_file,"%lf    ",press_part_lis_down[i][j]);
+			fprintf(part_temp_file,"%lf    ",temp_part_lis_up[i][j]);
+			fprintf(part_press_file,"%lf    ",press_part_lis_up[i][j]);
+		}
+		fprintf(part_temp_file,"\n");
+		fprintf(part_press_file,"\n");
+		fprintf(press_file,"%lf    %lf\n",t_lis[i],press_lis[i]);
+		fprintf(temp_file,"%lf    %lf\n",t_lis[i],temp_lis[i]);
+/*		
+		fprintf(kin_file,"%lf	%lf\n",t_lis[i],total_kin_lis[i]);
+		fprintf(pot_file,"%lf	%lf\n",t_lis[i],pot_lis[i]);
+		fprintf(tot_file,"%lf	%lf\n",t_lis[i],total_e_lis[i]);
+		fprintf(enegy_file,"%lf    %lf    %lf    %lf\n",t_lis[i],total_kin_lis[i],pot_lis[i],total_e_lis[i]);
+		fprintf(dis_p,"%lf	%lf	  \n",t_lis[i],dpy_lis[i]);
+		fprintf(pow_p,"%lf	%lf	  \n",t_lis[i],ppy_lis[i]);
+		fprintf(press_d_file,"%lf    %lf\n",t_lis[i],press_d_lis[i]);
+		fprintf(press_u_file,"%lf    %lf\n",t_lis[i],press_u_lis[i]);
+*/
+
+	
+}
 
 //file close
+
 fclose(all_condition_file);
-fclose(mini_file);
+
 fclose(omega_file);
-fclose(theta_file);
+//fclose(theta_file);
 fclose(efile);
-//fclose(press_file);
-//fclose(temp_file);
-//fclose(part_press_file);
-//fclose(part_temp_file);
+fclose(press_file);
+fclose(temp_file);
+fclose(part_press_file);
+fclose(part_temp_file);
+
+
+lxly=fopen("./plotdata/anidat/makefig/lxly.dat","w");
+fprintf(lxly,"%lf    %lf    %lf     %d",lx,ppy_max,temp_l,PARTNUM);
+fclose(lxly);
+
+
 /*
 fclose(kin_file);
 fclose(pot_file);
@@ -906,16 +1124,21 @@ fclose(pow_p);
 fclose(press_d_file);
 fclose(press_u_file);
 */
-//debugfile
 
 
-//lxly=fopen("./plotdata/pack2_wt/lxly.dat","w");
-//fprintf(lxly,"%lf    %lf",lx,ppy_max);
-//fclose(lxly);
 
+//close particle animation
+fclose(rx_list);
+fclose(ry_list);
+fclose(dp);
+fclose(py);
 	return 0;
 
 }
+
+
+
+
 
 
 //prototype function after write
@@ -1101,7 +1324,7 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 
 
 
-void piston_move_u(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY){
+void piston_move_u(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double F_RIGHT,double F_LEFT,double RX[]){
 	double dq=0.0;
 	double fdu=0.0;
 	double fdu_sum=0.0;
@@ -1117,73 +1340,71 @@ void piston_move_u(int NP,double RY[],double RY_B[],double VY[],double VY_B[],do
 	double re_vel=0.0;
 
 	for(i=0;i<NP;i++){
-		if(RY_B[i]>=DPY_B+0.5 && RY[i]<DPY+0.5){
-
-            //devide step h -> h1,h2 h1
-			rand_num=genrand_real3();
-			d_w=RY_B[i]-(DPY_B+0.5);
-			re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
-			re_vel=sqrt(re_vel);
-			h1=d_w/re_vel;
-			if (h1<0){printf("\nup:%lf\n",h1);}
-            *H1_D=h1;
-			h_ss=fabs(H-h1);
-			RY[i]=RY_B[i]+VY_B[i]*h1;
-            vy_l=VY[i];
-            //devide step h -> h1,h2 h2
-           if (rand_num<(1-PROBABIRITY)){
-				*HIT_PISTON+=1;
-    			*k+=1;
-				Momentum_u[0]=VY[i]+MDP*(*DPV);
-				Kin_u[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
-
-				VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
-              *DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
-
-//				VY[i]=-VY_B[i]+2*(*DPV);
-
-				Momentum_u[1]=VY[i]+MDP*(*DPV);
-				Kin_u[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
-
-				*delta_mom+=Momentum_u[1]-Momentum_u[0];
-				*delta_kin+=Kin_u[1]-Kin_u[0];
-				*delta_mom=(*delta_mom)/(*k);
-				*delta_kin=(*delta_kin)/(*k);
-
-				dd=VY[i]*h_ss;
-				RY[i]=RY[i]+dd;
-				fdu=-(VY[i]-VY_B[i])/H;
-				fdu_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
-					if(dq>=0.0){
-						*Q_IN+=dq;
-					}else{
-						*Q_OUT+=dq;
-					}
 
 
-		    }else{
-                *j+=1;
-				*THROUGH_PISTON+=1;
-                VY[i]=-canon_b(TEMP_L);
-				dd=VY[i]*h_ss;
-				RY[i]=RY[i]+dd;
-				fdu=-(VY[i]-VY_B[i])*H_REV;
-				fdu_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
-					if(dq>=0.0){
-						*Q_IN+=dq;
-					}else{
-						*Q_OUT+=dq;
-					}                
-            }
+		if((F_RIGHT+0.5)>RX[i] && (F_LEFT-0.5)<RX[i]){
+			if(RY_B[i]>=DPY_B+0.5 && RY[i]<DPY+0.5){
+				//devide step h -> h1,h2 h1
+				rand_num=genrand_real3();
+				d_w=RY_B[i]-(DPY_B+0.5);
+				re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
+				re_vel=sqrt(re_vel);
+				h1=d_w/re_vel;
+				if (h1<0){printf("\nup:%lf\n",h1);}
+				*H1_D=h1;
+				h_ss=fabs(H-h1);
+				RY[i]=RY_B[i]+VY_B[i]*h1;
+				vy_l=VY[i];
+				//devide step h -> h1,h2 h2
+			if (rand_num<PROBABIRITY){
+					*HIT_PISTON+=1;
+					*k+=1;
+					Momentum_u[0]=VY[i]+MDP*(*DPV);
+					Kin_u[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
 
-        }
-	}
+					VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
+				*DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
+
+					Momentum_u[1]=VY[i]+MDP*(*DPV);
+					Kin_u[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
+
+					*delta_mom+=Momentum_u[1]-Momentum_u[0];
+					*delta_kin+=Kin_u[1]-Kin_u[0];
+					*delta_mom=(*delta_mom)/(*k);
+					*delta_kin=(*delta_kin)/(*k);
+
+					dd=VY[i]*h_ss;
+					RY[i]=RY[i]+dd;
+					fdu=-(VY[i]-VY_B[i])/H;
+					fdu_sum+=fdu;
+					dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
+						if(dq>=0.0){
+							*Q_IN+=dq;
+						}else{
+							*Q_OUT+=dq;
+						}
+
+
+				}else{
+					*j+=1;
+					*THROUGH_PISTON+=1;
+
+					dd=VY[i]*h_ss;
+					RY[i]=RY[i]+dd;
+					
+				}
+
+			}
+
+		}
+
+
+		//dendfor
+		}
 	*FDP=fdd_sum+fdu_sum;
 }
 	
-void piston_move_d(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY){
+void piston_move_d(int NP,double RY[],double RY_B[],double VY[],double VY_B[],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double F_RIGHT,double F_LEFT,double RX[]){
 	double dq=0.0;
 	double fdu=0.0;
 	double fdu_sum=0.0;
@@ -1197,70 +1418,67 @@ void piston_move_d(int NP,double RY[],double RY_B[],double VY[],double VY_B[],do
 	double z=0.0;
 	int i;
 	double re_vel=0.0;
-    for(i=0;i<NUM;i++){
-    	if(RY_B[i]<=DPY_B-0.5 && RY[i]>DPY-0.5){
+    for(i=0;i<NP;i++){
+		if((F_RIGHT+0.5)>RX[i] && (F_LEFT-0.5)<RX[i]){
+			if(RY_B[i]<=DPY_B-0.5 && RY[i]>DPY-0.5){
+				z=genrand_real3();
+				d_w=(DPY_B-0.5)-RY_B[i];
+				re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
+				re_vel=sqrt(re_vel);
+				h1=d_w/re_vel;
+				h_ss=fabs(H-h1);
 
-			z=genrand_real3();
-			d_w=(DPY_B-0.5)-RY_B[i];
-			re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
-			re_vel=sqrt(re_vel);
-			h1=d_w/re_vel;
-			h_ss=fabs(H-h1);
+				RY[i]=RY_B[i]+VY_B[i]*h1;
+				DPY=DPY_B+(*DPV)*h1;
+				if (z<PROBABIRITY){
+					*kk+=1;
+					*HIT_PISTON+=1;
+					vy_l=VY[i];
+					Momentum_d[0]=VY[i]+MDP*(*DPV);
+					Kin_d[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
 
-			RY[i]=RY_B[i]+VY_B[i]*h1;
-			DPY=DPY_B+(*DPV)*h1;
-			if (z<(1-PROBABIRITY)){
-     			*kk+=1;
-				*HIT_PISTON+=1;
-				vy_l=VY[i];
-				Momentum_d[0]=VY[i]+MDP*(*DPV);
-				Kin_d[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
+					VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
+					*DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
 
-				VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
-                *DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
+					Momentum_d[1]=VY[i]+MDP*(*DPV);
+					Kin_d[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
 
-				Momentum_d[1]=VY[i]+MDP*(*DPV);
-				Kin_d[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
+					*delta_mom+=Momentum_d[1]-Momentum_d[0];
+					*delta_kin+=Kin_d[1]-Kin_d[0];
+					*delta_mom=(*delta_mom)/(*kk);
+					*delta_kin=(*delta_kin)/(*kk);
 
-				*delta_mom+=Momentum_d[1]-Momentum_d[0];
-				*delta_kin+=Kin_d[1]-Kin_d[0];
-				*delta_mom=(*delta_mom)/(*kk);
-				*delta_kin=(*delta_kin)/(*kk);
-
-				dd=VY[i]*h_ss;
-				if (VY[i]>0){
-				}
-				else{RY[i]=RY[i]+dd;}
-				if((*DPV)<0.0 && RY[i]>DPY-0.5){
-					printf("h_ss :%lf,d_w :%lf,re_vel:%lf,h1:%lf,vy_b:%lf,dpv:%lf\n",h_ss,d_w,re_vel,h1,VY_B[i],*DPV);
+					dd=VY[i]*h_ss;
+					if (VY[i]>0){
 					}
-				fdd=-(VY[i]-vy_l)*H_REV;
-				fdd_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
-				if(dq>=0.0){
-					*Q_IN+=dq;
-				}else{
-					*Q_OUT+=dq;
-				}
-
-
-		    }else{
-                *jj+=1;
-				*THROUGH_PISTON+=1;
-                VY[i]=canon_b(TEMP_H);
-				dd=VY[i]*h_ss;
-				RY[i]=RY[i]+dd;
-				fdu=-(VY[i]-VY_B[i])*H_REV;
-				fdu_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
+					else{RY[i]=RY[i]+dd;}
+					if((*DPV)<0.0 && RY[i]>DPY-0.5){
+						printf("h_ss :%lf,d_w :%lf,re_vel:%lf,h1:%lf,vy_b:%lf,dpv:%lf\n",h_ss,d_w,re_vel,h1,VY_B[i],*DPV);
+						}
+					fdd=-(VY[i]-vy_l)*H_REV;
+					fdd_sum+=fdu;
+					dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
 					if(dq>=0.0){
 						*Q_IN+=dq;
 					}else{
 						*Q_OUT+=dq;
-					}                     
-            }
+					}
 
-        }
+
+				}else{
+					*jj+=1;
+					*THROUGH_PISTON+=1;
+					dd=VY[i]*h_ss;
+					RY[i]=RY[i]+dd;                  
+				}
+
+			}
+
+		}
+
+
+
+
     }
 	*FDP=fdd_sum+fdu_sum;
 
@@ -1287,31 +1505,49 @@ void velocity(int NP,double RY[],double VX[],double VY[],double DPY,double *TEMP
 			N_U_list[i]=i;
 		}
 	}
-	*TEMP=*TEMP/NUM;
+	*TEMP=*TEMP/NP;
 	*TEMP_D=*TEMP_D/(*ND);
 	*TEMP_U=*TEMP_U/(*NU);
 }
 
 
-void partition(double RY[],double VX[] , double VY[] ,double PPY,double TEMP_PART_LIST[NWRITE][PARTNUM],double PRESS_PART_LIST[NWRITE][PARTNUM],int T_WRITE){
-	int i,j,k;
+void partition(double RY[],double VX[] , double VY[] ,double PPY,double DPY,double TEMP_PART_LIST_DOWN[NWRITE][PARTNUM/2],double TEMP_PART_LIST_UP[NWRITE][PARTNUM/2],double PRESS_PART_LIST_DOWN[NWRITE][PARTNUM/2],double PRESS_PART_LIST_UP[NWRITE][PARTNUM/2],int T_WRITE,int NP){
+	int i,j,k,l;
 	double temp;
-	double re_partnum=(double) 1/PARTNUM;
+	double partnum= PARTNUM/2;
+ 	double re_partnum=(double) 1/partnum;
 	double part,part_plus;
-	double pow_ppy=(PPY*re_partnum)*(PPY*re_partnum);
-	for(i=0;i<PARTNUM;i++){
+	double up_pow_ppy=((PPY-DPY)*re_partnum)*((PPY-DPY)*re_partnum);
+	double down_pow_ppy=(DPY*re_partnum)*(DPY*re_partnum);
+	double up_y;
+	double up_part,down_part,up_part_plus,down_part_plus;
+	double up_block,down_block;
+	double temp_up,temp_down;
+	for(i=0;i<partnum;i++){
 		k=0;
-		part=((double) (i/PARTNUM))*PPY;
-		part_plus=((double) (i+1)/PARTNUM)*PPY;
-		for(j=0;j<NUM;j++){
-			if(part<=RY[j] && part_plus>RY[j]){
+		l=0;
+		up_y=PPY-DPY;
+		up_block=up_y*re_partnum;
+		down_block=DPY*re_partnum;
+		up_part=((double) (i/partnum))*up_y+DPY;
+		up_part_plus=((double) (i+1)/partnum)*up_y+DPY;
+		down_part=((double) (i/partnum))*DPY;
+		down_part_plus=((double) (i+1)/partnum)*DPY;
+		for(j=0;j<NP;j++){
+			if(up_part<=RY[j] && up_part_plus>RY[j]){
 				k+=1;
-				TEMP_PART_LIST[T_WRITE-1][i]+=0.5*(VX[j]*VX[j]+VY[j]*VY[j]);
+				TEMP_PART_LIST_UP[T_WRITE-1][i]+=0.5*(VX[j]*VX[j]+VY[j]*VY[j]);
+				}
+			if(down_part<=RY[j] && down_part_plus>RY[j]){
+				l+=1;
+				TEMP_PART_LIST_DOWN[T_WRITE-1][i]+=0.5*(VX[j]*VX[j]+VY[j]*VY[j]);
 				}
 			}
-		TEMP_PART_LIST[T_WRITE-1][i]=TEMP_PART_LIST[T_WRITE-1][i]/k;
-		temp=TEMP_PART_LIST[T_WRITE-1][i];
-		PRESS_PART_LIST[T_WRITE-1][i]=(k/pow_ppy)*temp;
-	
+		TEMP_PART_LIST_UP[T_WRITE-1][i]=TEMP_PART_LIST_UP[T_WRITE-1][i]/k;
+		TEMP_PART_LIST_DOWN[T_WRITE-1][i]=TEMP_PART_LIST_DOWN[T_WRITE-1][i]/l;
+		temp_up=TEMP_PART_LIST_UP[T_WRITE-1][i];
+		temp_down=TEMP_PART_LIST_DOWN[T_WRITE-1][i];
+		PRESS_PART_LIST_DOWN[T_WRITE-1][i]=(l/down_pow_ppy)*temp_down;
+		PRESS_PART_LIST_UP[T_WRITE-1][i]=(k/up_pow_ppy)*temp_up;
 	}
 }
