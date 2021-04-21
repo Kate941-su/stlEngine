@@ -12,7 +12,7 @@
 #define N (Nx*Ny)
 
 //server
-#define NSTEPS 20000
+#define NSTEPS 2000
 //local test
 //#define NSTEPS 200000
 
@@ -279,14 +279,6 @@ int main(int argc,char *argv[]) {
 	double sum_vy=0.0;
 	int pairlist[N][10];
 	int pairlist_innit[N][10];
-/*
-	//high speed parametor
-	const double l_gx = 0.448;
-	const double l_gy = l_gx;
-	const int n_gx = ceil(lx / l_gx) + 6;//袖領域のため
-	const int n_gy = ceil(ly / l_gy) + 6 + ceil(0.25*lx/l_gx);//袖領域のため
-	const int n_g_all = n_gx * n_gy;
-*/
 	//ぴったりにする
 	int bo=(lx/0.4);
 	double l_gx_d=lx/bo;
@@ -295,19 +287,11 @@ int main(int argc,char *argv[]) {
 	const int n_gx = ceil(lx / l_gx) +6 ;//袖領域のため
 	const int n_gy = ceil((ly / l_gy)+(0.25*lx)/l_gy)+6;//袖領域のため
 	const int n_g_all = n_gx * n_gy;
-
-
-
-
     int **g_map;
     g_map = (int**)malloc(sizeof(int*)*n_gy);
     for(i=0;i<n_gy;i++){
         g_map[i]=(int*)malloc(sizeof(int)*n_gx);
     }
-
-
-
-
 	int neighbor_list_row[] = { -3,-3,-3,
 							   -2,-2,-2,
 								-1,-1,-1,
@@ -821,7 +805,7 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		total_e = total_kin + pot;
 
 			if (t % nout == 0){
-				printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf,momentum_vx:%lf,momentum_vy:%lf\n", t * h, total_kin, pot, total_e,sum_vx,sum_vy);
+				printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf,momentum_vx:%lf,momentum_vy:%lf,Qin:%lf,Qout:%lf,firstEne:%lf,difference:%lf\n", t * h, total_kin, pot, total_e,sum_vx,sum_vy,q_in,q_out,kin0,kin0 - total_e + (q_in + q_out));
 	}
 		//work and thermal efficiency
 		w+=gamma*rf*omega*dtheta;
@@ -850,8 +834,6 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		fprintf(theta_file,"%lf    %lf\n",(double) t*h,theta);
 		fprintf(relation_heat_work,"%lf    %lf    %lf    %lf    %lf\n",((double) t*h),q_in,q_out,(q_in+q_out),w);
 	}
-
-
 }
 //end mainloop
 te = omp_get_wtime();
@@ -861,8 +843,6 @@ printf("hit is :%d,through is %d\n",hit_piston,through_piston);
 printf("up_hit:%d,down_hit:%d\n",up_hit,down_hit);
 printf("up_through:%d,down_through:%d\n",up_through,down_through);
 printf("rotation num is : %d\n",circle_num);
-printf("%lf %lf\n",q_in,q_out);
-printf("%lf\n",total_kin);
 //free gmap
 for(i=0;i<n_gy;i++){
 	free(g_map[i]);
@@ -944,15 +924,13 @@ fclose(press_u_file);
 //fprintf(lxly,"%lf    %lf",lx,ppy_max);
 //fclose(lxly);
 
-	/*pythonでファイルの作成*/
-	int ret;
-	char python_exe[60];
-	const char* python_word="python make_init_py.py";
-	sprintf(python_exe,"%s %s%d",python_word,plotdata,(int) temp_l);
-	ret=system(python_exe);
-
-	return 0;
-
+/*pythonでファイルの作成*/
+//int ret;
+//char python_exe[60];
+//const char* python_word="python make_init_py.py";
+//sprintf(python_exe,"%s %s%d",python_word,plotdata,(int) temp_l);
+//ret=system(python_exe);
+return 0;
 }
 
 

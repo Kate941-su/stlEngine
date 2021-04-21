@@ -561,7 +561,7 @@ int main(int argc,char *argv[]) {
 	double t_lis[NWRITE];
 
 	//11/30追加コンテンツ
-	const double ack_rot=0.125*M_PI;
+	const double ack_rot = M_PI / 12;
     const double ack_circle =2*M_PI;
 	double rot=0.0;
     double circle=0.0;
@@ -897,10 +897,9 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		}
 		total_kin = total_kin * 0.5;
 		total_e = total_kin + pot;
-
 			if (t % nout == 0){
 				printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf,momentum_vx:%lf,momentum_vy:%lf\n", t * h, total_kin, pot, total_e,sum_vx,sum_vy);
-	}
+	    }
 		//work and thermal efficiency
 		w+=gamma*rf*omega*dtheta;
 		e=w/(0.5*ia*omega_0*omega_0+q_in);
@@ -909,11 +908,10 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
         circle=fabs(theta)-circle_num*ack_circle;
 		if (rot>ack_rot){
 			rot-=fabs(ack_rot);
+            //ppy*lx = V
 			fprintf(all_condition_file,"%lf    %lf    %lf    %lf    %lf    %lf\n",t*h,press_all,temp_all,ppy*lx,ppy,dpy);
 			rot_num+=1;
 		}
-
-
 		if (circle>ack_circle){
 			circle-=fabs(ack_circle);
 			circle_num+=1;
@@ -922,14 +920,11 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 			e=one_cycle_w/one_cycle_q_in;
 			fprintf(efile,"%lf    %lf\n",(double) t*h,e);
 		}
-
 	if (t%NDEVIDE==0){
 		fprintf(omega_file,"%lf    %lf\n",(double) t*h,omega);
 		fprintf(theta_file,"%lf    %lf\n",(double) t*h,theta);
 		fprintf(relation_heat_work,"%lf    %lf    %lf    %lf    %lf\n",((double) t*h),q_in,q_out,(q_in+q_out),w);
-	}
-
-
+    }
 }
 //end mainloop
 te = omp_get_wtime();

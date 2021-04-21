@@ -500,8 +500,8 @@ int main(int argc,char *argv[]) {
     double theta_lis[NWRITE];
 	double t_lis[NWRITE];
 	//11/30追加コンテンツ
-	const double ack_rot=0.125*M_PI;
-    const double ack_circle =2*M_PI;
+	const double ack_rot = M_PI / 12;
+    const double ack_circle = 2 * M_PI;
 	double rot=0.0;
     double circle=0.0;
 	int rot_num=0;
@@ -636,7 +636,6 @@ int main(int argc,char *argv[]) {
         dwy_b=dwy;
         ppy_b=ppy;	
         N_U_l_b=N_U_l_sum;
-		//debug
 		//initialize
 		total_kin = 0.0;
 		total_e = 0.0;
@@ -752,7 +751,8 @@ int main(int argc,char *argv[]) {
 		velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
 		press_all=temp_all*N/(lx*ppy);
 		press_d=temp_d*N_D/(lx*dpy);
-		press_u=temp_u*N_U/(lx*(ppy-dpy));
+		press_u=temp_u*N_U/
+        (lx*(ppy-dpy));
         N_U_l_sum=int_array_sum(N_U_l);
 		//caliclate kin-energy
 		for (i = 0;i < N;i++) {
