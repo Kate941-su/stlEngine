@@ -317,23 +317,18 @@ fclose(enegy_file);
 
 
 void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, double RC2, double* POT, double* POT_IJ, double* MINI ,FILE *PAIR) {
-
 	int i, j;
 	double rxij;
 	double ryij;
 	double r2;
 	double ir2, ir6;
 	double fx, fy;
-
-
 	for (i = 0;i < NP;i++) {
 		AX[i] = 0.0;
 		AY[i] = 0.0;
 	}
-
 	*POT = 0.0;
 	*POT_IJ = 0.0;
-
 	for (i = 0;i < NP-1;i++) {
 		for (j = i+1;j < NP;j++) {
 			rxij = RX[i] - RX[j];

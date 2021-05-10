@@ -11,17 +11,16 @@
 #include "MT.h"
 #include <time.h>
 
-#define Nx 10
-#define Ny 20
+#define Nx 15
+#define Ny 30
 #define N (Nx*Ny)
-#define NSTEPS 20000
-#define NDEVIDE 2000
-#define NWRITE (NSTEPS/NDEVIDE)
+#define NSTEPS 2000000
+
 
 //prototype function
 void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int N_GX, int N_GY, int NEIGHBOR_ROW[], int NEIGHBOR_COL[], int NEITGHBOR_LEN, int PAIRLIST[][10], double LX, int **G_MAP);
 
-void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], int PAIRLIST2[][10] ,double RC2, double* POT, double* POT_IJ, double* MINI,FILE *PAIR);
+void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], double RC2, double* POT, double* POT_IJ, double* MINI);
 
 //normal distribution function
 //genrand_real3 is imported form MT.h
@@ -58,7 +57,7 @@ void elastic(int NP, double RY[], double VY[], double LY) {
 	int i;
 	for (i = 0;i < NP;i++) {
 		if (RY[i] > LY - 0.5 | RY[i] < 0.5) {
-			VY[i] = -1.5*VY[i];
+			VY[i] = -VY[i];
 		}
 	}
 }
@@ -72,14 +71,7 @@ int main(void) {
 	FILE *pot_file;
 	FILE *tot_file;
 	FILE *enegy_file;
-    FILE *vx_read;
-    FILE *vy_read;
-	FILE *pair;
-	//for animation
-	FILE *rx_list;
-	FILE *ry_list;
-	FILE *ay_list;
-	FILE *ax_list;
+
 	//generate random seed from time
 	init_genrand((unsigned)time(NULL));
 
@@ -97,25 +89,23 @@ int main(void) {
 	const double h2 = 0.5 * h * h;
 	const int nout = NSTEPS / 10;
 	const int t_end = NSTEPS * h;
-	int t_write=0;
 
-
-
+	double q_in=0;
+	double q_out = 0;
+	double q_in_sum = 0;
+	double q_out_sum = 0;
 	double kin0=0;
 	double pot = 0;
 	double pot_ij = 0;
-	double pot_lis[NDEVIDE];
 	double total_kin=0;
-	double total_kin_lis[NDEVIDE];
 	double total_e=0;
-	double total_e_lis[NDEVIDE];
+
 
 
 	int i, j, k, l,m;
 	int t;
 	double ts = 0;
 	double te = 0;
-	double t_lis[NDEVIDE];
 	double rx[N];
 	double ry[N];
 	double vx[N];
@@ -124,37 +114,13 @@ int main(void) {
 	double ay[N];
 
 
-    //prepare read file
-    int num=N;
-    char moge[5];
-    char vx_name[] = "vx";
-    char vy_name[] = "vy";
-    double vx_dummy=0.0;
-    double vy_dummy=0.0;
-    char text[] =".dat";
-    char vy_lis[30];
-    char vx_lis[30];
-    sprintf(moge,"%d",num);
-    sprintf(vx_lis,"%s%s%s",vx_name,moge,text);
-    sprintf(vy_lis,"%s%s%s",vy_name,moge,text);
-
-
 	//high speed parametor
-	//ぴったりにする
-	int bo=(lx/0.4);
-	double l_gx_d=lx/bo;
-
-	const double l_gx = l_gx_d;
+	const double l_gx = 0.56;
 	const double l_gy = l_gx;
 	const int n_gx = ceil(lx / l_gx) + 6;//袖領域のため
-	const int n_gy = ceil(ly / l_gy) + 40;//袖領域のため
+	const int n_gy = ceil(ly / l_gy) + 6;//袖領域のため
 	const int n_g_all = n_gx * n_gy;
-
-
 	int pairlist[N][10];
-	int pairlist2[N][10];
-
-//	int g_map[230][118];//after change malloc
     int **g_map;
     g_map = (int**)malloc(sizeof(int*)*n_gy);
     for(i=0;i<n_gy;i++){
@@ -209,13 +175,6 @@ int main(void) {
 		}
 	}
 	
-	for (i = 0;i < N;i++) {
-		for (j = 0;j < 10;j++) {
-			pairlist2[i][j] = -1;
-		}
-	}
-
-
 	for (i = 0;i < n_gy;i++) {
 		for (j = 0;j < n_gx;j++) {
 			g_map[i][j] = -1;
@@ -224,30 +183,13 @@ int main(void) {
 
 	const int neighbor_len = sizeof(neighbor_list_row) / sizeof(int);
 
-
-///read vx,vy,file
-
-    vx_read=fopen(vx_lis,"r");
-    vy_read=fopen(vy_lis,"r");
-
-    for (i=0;i<N;i++){
-        fscanf(vx_read,"%lf",&vx_dummy);
-        fscanf(vy_read,"%lf",&vy_dummy);
-        vx[i]=vx_dummy;
-        vy[i]=vy_dummy;
-    }
-
-    fclose(vx_read);
-    fclose(vy_read);
-
-
 	k = 0;
 	for (i = 0;i < Nx;i++) {
 		for (j = 0;j < Ny;j++) {
 			rx[k] = i * dx + dx * 0.5;
 			ry[k] = j * dy + dy * 0.5;
-//			vx[k] = sqrt(temp) * normal();
-//			vy[k] = sqrt(temp) * normal();
+			vx[k] = sqrt(temp) * normal();
+			vy[k] = sqrt(temp) * normal();
 			ax[k] = 0.0;
 			ay[k] = 0.0;
 			k = k + 1;
@@ -278,7 +220,6 @@ int main(void) {
 
 
 	gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
-
 		m=0;
 		for (i=3;i<n_gy-3;i++){
 			for(j=3;j<n_gx-3;j++){
@@ -288,12 +229,11 @@ int main(void) {
 			}
 		}
 		printf("particlenum:%d\n",l);
-		tot_file=fopen("./plotdata/totgmap2.dat","w");
-		rx_list=fopen("./plotdata/rx_list.dat","w");
-		ry_list=fopen("./plotdata/ry_list.dat","w");
-		ax_list=fopen("./plotdata/ax_list.dat","w");
-		ay_list=fopen("./plotdata/ay_list.dat","w");
-		pair=fopen("./plotdata/pairlist_kai.dat","w");
+
+//	printf("kin0:%lf\n", kin0);
+//	printf("counter:%d\n", l);
+	printf("hello mainloop\n");
+	printf("kin0:%lf\n\n",kin0);
 	//-------------start mainroop------------------
 
 	for (t = 1;t <= NSTEPS;t++)
@@ -302,10 +242,6 @@ int main(void) {
 		//initialize
 		total_kin = 0.0;
 		total_e = 0.0;
-		if ((t-1)%NDEVIDE==0){
-			t_write+=1;
-			t_lis[t_write-1] = t * h;
-		}
 		//verlet
 		for (i = 0;i < N;i++) {
 			rx[i] = rx[i] + vx[i] * h + ax[i] * h2;
@@ -314,34 +250,9 @@ int main(void) {
 			vy[i] = vy[i] + ay[i] * h * 0.5;
 		}
 
-
-		//for animaiton
-/*
-		for (i=0;i<N;i++){
-			fprintf(rx_list,"%lf    ",rx[i]);
-		}
-		fprintf(rx_list,"\n");
-
-		for (i=0;i<N;i++){
-			fprintf(ry_list,"%lf    ",ry[i]);
-		}
-		fprintf(ry_list,"\n");
-		for (i=0;i<N;i++){
-			fprintf(ax_list,"%lf    ",ax[i]);
-		}
-		fprintf(ax_list,"\n");
-
-		for (i=0;i<N;i++){
-			fprintf(ay_list,"%lf    ",ay[i]);
-		}
-		fprintf(ay_list,"\n");
-*/
-
-
-
 //make gmap and pairlist
-		boundary(N, rx, lx);
-		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
+
+	gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 
 
 
@@ -355,16 +266,15 @@ int main(void) {
 				}
 			}
 		}
-/*
+
 		if(m!= N){
 			printf("particlenum:%d\n",m);
 			printf("kasanari\n\n");
 			break;
 		}
-*/
 
 		//cliculate force		
-		force(N, rx, ry, ax, ay, lx, ly, pairlist, pairlist2 , rc2, &pot, &pot_ij, &mini,pair);
+		force(N, rx, ry, ax, ay, lx, ly, pairlist, rc2, &pot, &pot_ij, &mini);
 
 		//second verlet
 		for (i = 0;i < N;i++) {
@@ -373,6 +283,7 @@ int main(void) {
 		}
 
 		//boundary condition 
+		boundary(N, rx, lx);
 
 		elastic(N, ry, vy, ly);
 
@@ -383,34 +294,19 @@ int main(void) {
 
 		total_kin = total_kin * 0.5;
 		total_e = total_kin + pot;
-		if ((t-1)%NDEVIDE==0){
-			total_kin_lis[t_write-1] = total_kin;
-			pot_lis[t_write-1] = pot;
-			total_e_lis[t_write-1] = total_e;
-		}
-		//write in file
 
-//			fprintf (tot_file,"%lf\n",total_e);
-
-
-	if (t % nout == 0)
+		if (t % nout == 0)
 		{
 			printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf\n", t * h, total_kin, pot, total_e);
+			printf("particlenum:%d\n",m);
+
 		}
 
 	}
-
 	//end mainloop
-//close particle animation
-	fclose(rx_list);
-	fclose(ry_list);
-	fclose(ax_list);
-	fclose(ay_list);
-	fclose(tot_file);
-	fclose(pair);
 	te = omp_get_wtime();
 
-//	printf("time cost is %lf seconds\n", te - ts);
+	printf("time cost is %lf seconds\n", te - ts);
 	l = 0;
 
     //free activated array
@@ -420,33 +316,6 @@ int main(void) {
     }
     free(g_map);
 
-//check the gmap
-/*
-	printf("mini:%lf\n", mini);
-	for (i = 0;i < n_gy;i++)
-	{
-		for (j = 0;j < n_gx;j++) {
-			if (g_map[i][j] != -1) {
-				l += 1;
-			}
-		}
-
-	}
-
-	for(i=0;i<N;i++){
-		for(j=0;j<10;j++){
-			printf("%d  ",pairlist[i][j]);
-		}
-		printf("\n");
-	}
-*/
-
-/*
-	printf("counter:%d\n", l);
-	printf("n_gx:%d\n", n_gx);
-	printf("n_gy:%d\n", n_gy);
-*/
-
 
 //file output
 /*
@@ -454,28 +323,12 @@ kin_file = fopen("./plotdata/kin.dat","w");
 pot_file = fopen("./plotdata/pot.dat","w");
 tot_file = fopen("./plotdata/tot.dat","w");
 enegy_file=fopen("./plotdata/energy.dat","w");
-for(i=0;i<NWRITE;i++){
-		fprintf(kin_file,"%lf	%lf\n",t_lis[i],total_kin_lis[i]);
-		fprintf(pot_file,"%lf	%lf\n",t_lis[i],pot_lis[i]);
-		fprintf(tot_file,"%lf	%lf\n",t_lis[i],total_e_lis[i]);
-		fprintf(enegy_file,"%lf    %lf    %lf    %lf\n",t_lis[i],total_kin_lis[i],pot_lis[i],total_e_lis[i]);
-		
-}
 fclose(kin_file);
 fclose(pot_file);
 fclose(tot_file);
 fclose(enegy_file);
 */
-/*
-for (i=0;i<N;i++){
-	for(j=0;j<10;j++){
-		if(pairlist2[i][j]!=-1){
-		printf("%d\n",pairlist2[i][j]);
-		}
-	}
-}
-*/
-	return 0;
+return 0;
 
 }
 
@@ -505,11 +358,11 @@ void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int
 
 	for (i = 0;i < NP;i++) {
 		gx_map = (int)(RX[i] / L_GX) + 3;
-		gy_map =N_GY- 4 - (int)(RY[i] / L_GY);// (int)(RY[i] / L_GY) + 3
+		gy_map = (int)(RY[i] / L_GY) + 3;// N_GY-4 - (int)(RY[i] / L_GY)
 		G_MAP[gy_map][gx_map] = i;
 	}
 
-	for (i = 0;i < N_GY;i++) {
+	for (i = 3;i < N_GY-3;i++) {
 		for (j = 0;j < 3;j++) {
 			G_MAP[i][j] = G_MAP[i][N_GX - 6 + j];
 		}
@@ -538,9 +391,9 @@ void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int
 
 }
 
-void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], int PAIRLIST2[][10] ,double RC2, double* POT, double* POT_IJ, double* MINI,FILE *PAIR) {
+void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], double RC2, double* POT, double* POT_IJ, double* MINI) {
 
-	int i, j,k=0;
+	int i, j;
 	int roop_num=0;
 	double rxij=0.0;
 	double ryij=0.0;
@@ -559,7 +412,6 @@ void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX
 
 	for (i = 0;i < NP;i++) {
 		roop_num = PAIRLIST[i][9];
-		k=0;
 		for (j = 0;j < roop_num;j++) {
 			rxij = RX[i] - RX[PAIRLIST[i][j]];
 
@@ -590,9 +442,6 @@ void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX
 				if (*MINI > sqrt(r2)) {
 					*MINI = sqrt(r2);
 				}
-
-				PAIRLIST2[i][k]=PAIRLIST[i][j];
-//				fprintf(PAIR,"%d   %d\n",i,PAIRLIST[i][j]);
 			}
 
 			AX[i] = AX[i] + fx;

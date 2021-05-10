@@ -188,27 +188,16 @@ int main(void) {
 	3 3 3 3 3 3 3
 
 	*/
-
-
-
-
-
-
-
 	//idealy thermal efficiency
 	const double eta = 1.0 - (temp_h / temp_l);
 	const double eta_ca = 1.0 - (sqrt(temp_h / temp_l));
-
 	//force parametor
 	const double rc = pow(2.0, (double)1 / 6);
 	double rc2 = rc * rc;
 	double mini = 1000.0;
-
 	//debug parameter
 	double FX=0.0;
 	double FY=0.0;
-
-	
 	for (i = 0;i < ND;i++) {
 		for (j = 0;j < 10;j++) {
 			pairlist[i][j] = -1;
@@ -220,28 +209,7 @@ int main(void) {
 			g_map[i][j] = -1;
 		}
 	}
-
 	const int neighbor_len = sizeof(neighbor_list_row) / sizeof(int);
-
-
-///read vx,vy,file
-/*
-    vx_read=fopen(vx_lis,"r");
-    vy_read=fopen(vy_lis,"r");
-
-    for (i=0;i<N;i++){
-        fscanf(vx_read,"%lf",&vx_dummy);
-        fscanf(vy_read,"%lf",&vy_dummy);
-        vx[i]=vx_dummy;
-        vy[i]=vy_dummy;
-    }
-
-    fclose(vx_read);
-    fclose(vy_read);
-*/
-
-
-
 	k = 0;
 	for (i = 0;i < Nx;i++) {
 		for (j = 0;j < Ny;j++) {
@@ -357,9 +325,6 @@ int main(void) {
 		}
 
 	}
-
-
-
 	gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 		m=0;
 		for (i=3;i<n_gy-3;i++){
@@ -370,23 +335,12 @@ int main(void) {
 			}
 		}
 		printf("particlenum:%d\n",l);
-
-//	printf("kin0:%lf\n", kin0);
-//	printf("counter:%d\n", l);
 	printf("hello mainloop\n");
 	printf("kin0:%lf\n\n",kin0);
-
-
-
-
-//rx_list=fopen("./plotdata/anidat/makefig/rx_list.dat","w");
-//ry_list=fopen("./plotdata/anidat/makefig/ry_list.dat","w");
 tot_file=fopen("./plotdata/totene2.dat","w");
 	//-------------start mainroop------------------
-
 	for (t = 1;t <= NSTEPS;t++)
 	{
-
 		//initialize
 		total_kin = 0.0;
 		total_e = 0.0;
@@ -404,27 +358,8 @@ tot_file=fopen("./plotdata/totene2.dat","w");
 			vx[i] = vx[i] + ax[i] * h * 0.5;
 			vy[i] = vy[i] + ay[i] * h * 0.5;
 		}
-
-//make gmap and pairlist
-/*
-            if (t%NDEVIDE == 0){
-                for (i=0;i<N;i++){
-                    fprintf(rx_list,"%lf    ",rx[i]);
-                }
-                fprintf(rx_list,"\n");
-
-                for (i=0;i<N;i++){
-                    fprintf(ry_list,"%lf    ",ry[i]);
-                }
-                fprintf(ry_list,"\n");
-            }
-*/
 	gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
-
-
-
 //debug zone
-
 		m=0;
 		for (i=3;i<n_gy-3;i++){
 			for(j=3;j<n_gx-3;j++){

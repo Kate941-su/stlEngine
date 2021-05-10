@@ -1092,10 +1092,7 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 	double vy_l=0.0;
 	int i;
 	for(i=0;i<NP;i++){
-
-
 		if(RY[i]<=0.5){
-			
 			*d_w=RY_B[i]-0.5;
 			h1=(*d_w)/fabs(VY[i]);
 			*h_ss=H-h1;
@@ -1112,7 +1109,7 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 				*Q_OUT+=dq;
 			}
 
-		}
+}
 
 
 

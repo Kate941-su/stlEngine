@@ -150,18 +150,16 @@ int main(void) {
 	double total_e_b=0;
 	double pot = 0;
 	double pot_ij = 0;
-	double pot_lis[NDEVIDE];
 	double total_kin=0;
-	double total_kin_lis[NDEVIDE];
 	double total_e=0;
-	double total_e_lis[NDEVIDE];
+
 
 
 	int i, j, k, l,m;
 	int t;
 	double ts = 0;
 	double te = 0;
-	double t_lis[NDEVIDE];
+
 	double rx[N];
 	double ry[N];
 	double vx[N];
@@ -354,7 +352,6 @@ int main(void) {
 
 		if ((t-1)%NDEVIDE==0){
 			t_write+=1;
-			t_lis[t_write-1] = t * h;
 		}
 		//verlet
 		for (i = 0;i < N;i++) {
@@ -405,14 +402,6 @@ int main(void) {
 				}
 			}
 		}
-/*
-		if(m!= N){
-			printf("particlenum:%d\n",m);
-			printf("kasanari\n\n");
-			break;
-		}
-*/
-
 		//cliculate force		
 		force(N, rx, ry, ax, ay, lx, ly, pairlist, pairlist2 , rc2, &pot, &pot_ij, &mini,pair);
 
@@ -426,8 +415,8 @@ int main(void) {
 
 
 
-        elastic(N,ry,vy,ly,&q_in,&q_out);
-
+//        elastic(N,ry,vy,ly,&q_in,&q_out);
+        heatwall(N, ry,vy,ly,temp_l,temp_h,&q_in,&q_out);
 		//caliclate kin-energy
 		for (i = 0;i < N;i++) {
 			total_kin += (vx[i] * vx[i] + vy[i] * vy[i]);
@@ -437,11 +426,7 @@ int main(void) {
 		total_e = total_kin + pot;
 		diff=total_e-total_e_b;
 		diff_tot+=diff;
-		if ((t-1)%NDEVIDE==0){
-			total_kin_lis[t_write-1] = total_kin;
-			pot_lis[t_write-1] = pot;
-			total_e_lis[t_write-1] = total_e;
-		}
+
 		//write in file
 
 //			fprintf (tot_file,"%lf\n",total_e);
@@ -519,15 +504,6 @@ fclose(kin_file);
 fclose(pot_file);
 fclose(tot_file);
 fclose(enegy_file);
-*/
-/*
-for (i=0;i<N;i++){
-	for(j=0;j<10;j++){
-		if(pairlist2[i][j]!=-1){
-		printf("%d\n",pairlist2[i][j]);
-		}
-	}
-}
 */
 	return 0;
 
@@ -646,7 +622,6 @@ void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX
 				}
 
 				PAIRLIST2[i][k]=PAIRLIST[i][j];
-//				fprintf(PAIR,"%d   %d\n",i,PAIRLIST[i][j]);
 			}
 
 			AX[i] = AX[i] + fx;
