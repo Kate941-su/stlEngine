@@ -6,8 +6,8 @@
 #include "MT.h"
 #include <time.h>
 
-#define Nx 15
-#define Ny 30
+#define Nx 20
+#define Ny 20
 #define PARTNUM 2
 #define N (Nx*Ny)
 
@@ -330,7 +330,7 @@ int main(int argc,char *argv[]) {
 	double FY=0.0;
 
     //flywheel
-    const double rf=0.25*lx;//hankei
+    const double rf=0.25*ly;//hankei
     const int rhof=pow(10,pow_num);//density of fw
     const int gamma=100;//dumping by rotarion
     const double ia=0.5*M_PI*rhof*rf*rf*rf*rf;//inartia
@@ -647,7 +647,6 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 		//cliculate force		
 		force(N, rx, ry, ax, ay, lx, ly, pairlist, rc2, &pot, &pot_ij, &mini);
-//        force_nos(N, rx,ry,ax,ay,lx,ly,rc2,&pot,&pot_ij,&mini);
 		//second verlet
 		for (i = 0;i < N;i++) {
 			vx[i] = vx[i] + ax[i] * h * 0.5;
@@ -758,7 +757,6 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
         wTemp = 0.5 * ia * omega * omega;//運動エネルギー
         dispEne = 0.5 * mdp * dpv * dpv;//DPのエネルギー
         powerEne = 0.5 * mpp * ppv * ppv;//PPのエネルギー
-//		e=w/(0.5*ia*omega_0*omega_0+q_in);//熱効率（仮）
 
 		rot=fabs(theta)-rot_num*ack_rot;
         circle=fabs(theta)-circle_num*ack_circle;
@@ -1085,8 +1083,9 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 			RY[i]=RY_B[i]+VY_B[i]*h1;
             vy_l=VY[i];
             //devide step h -> h1,h2 h2
+
            if (rand_num<(1-PROBABIRITY)){//randnum < 1- P -> 反射
-				*HIT_PISTON+=1;
+/*				*HIT_PISTON+=1;
     			*k+=1;
 				Momentum_u[0]=VY[i]+MDP*(*DPV);
 				Kin_u[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
@@ -1096,9 +1095,8 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 				dd=VY[i]*h_ss;
 				RY[i]=RY[i]+dd;
 				fdu=-(VY[i]-VY_B[i])/H;
-				fdu_sum+=fdu;
-
-		    }else{
+				fdu_sum+=fdu;*/
+		    }else{              
                 *j+=1;
 				*THROUGH_PISTON+=1;
                 VY[i]=-canon_b(TEMP_L);
@@ -1134,18 +1132,16 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 	double re_vel=0.0;
     for(i=0;i<N;i++){
     	if(RY_B[i]<=DPY_B-0.5 && RY[i]>DPY-0.5){
-
 			z=genrand_real3();
 			d_w=(DPY_B-0.5)-RY_B[i];
 			re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
 			re_vel=sqrt(re_vel);
 			h1=d_w/re_vel;
 			h_ss=fabs(H-h1);
-
 			RY[i]=RY_B[i]+VY_B[i]*h1;
 			DPY=DPY_B+(*DPV)*h1;
 			if (z<(1-PROBABIRITY)){
-     			*kk+=1;
+/*     			*kk+=1;
 				*HIT_PISTON+=1;
 				vy_l=VY[i];
 				Momentum_d[0]=VY[i]+MDP*(*DPV);
@@ -1176,9 +1172,7 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 					*Q_IN+=dq;
 				}else{
 					*Q_OUT+=dq;
-				}
-
-
+				}*/
 		    }else{
                 *jj+=1;
 				*THROUGH_PISTON+=1;
