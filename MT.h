@@ -50,7 +50,8 @@
    - change the file name "mt19937ar.c" -> "MT.h"
 */
 
-
+#ifndef MT_MATH_H
+#define MT_MATH_H
 /* Period parameters */
 #define MT_N 624
 #define MT_M 397
@@ -178,3 +179,4 @@ double genrand_res53(void)
     return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
 }
 /* These real versions are due to Isaku Wada, 2002/01/09 added */
+#endif

@@ -6,13 +6,13 @@
 #include "MT.h"
 #include <time.h>
 
-#define Nx 30
-#define Ny 15
+#define Nx 15
+#define Ny 30
 #define PARTNUM 2
 #define N (Nx*Ny)
 
 //server
-#define NSTEPS 1000000
+#define NSTEPS 10000
 //local test
 //#define NSTEPS 200000
 
@@ -20,14 +20,12 @@
 #define NWRITE (NSTEPS/NDEVIDE)
 #define TEMPL 4.0
 #define OMEGA_0 -0.01
-#define P 0.5 //透過確率
+#define P 0.5
 #define KIZAMI 3e-4
 //prototype function
 void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int N_GX, int N_GY, int NEIGHBOR_ROW[], int NEIGHBOR_COL[], int NEITGHBOR_LEN, int PAIRLIST[][10], double LX, int **G_MAP);
 
 void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], double RC2, double* POT, double* POT_IJ, double* MINI);
-
-void force_nos(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, double RC2, double* POT, double* POT_IJ, double* MINI);
 
 void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,double *FPP,double LY,double *h_ss,double *d_w);
 
@@ -156,14 +154,30 @@ int main(int argc,char *argv[]) {
 	FILE *ry_list;
 	FILE *theta_file;
     FILE *efile;
+
+
+
 	FILE *press_file;
 	FILE *temp_file;
 	FILE *part_press_file;
 	FILE *part_temp_file;
 	FILE *all_condition_file;
 	FILE *relation_heat_work;
-    FILE *initarray;
-    FILE *initfile;
+
+/*読み込みファイル*/
+    FILE *rx_init;
+    FILE *ry_init;
+    FILE *vx_init;
+    FILE *vy_init;
+    FILE *ax_init;
+    FILE *ay_init;
+    FILE *rx_b_init;
+    FILE *ry_b_init;
+    FILE *vx_b_init;
+    FILE *vy_b_init;
+    FILE *ax_b_init;
+    FILE *ay_b_init;
+    FILE *init;
 
 	//flexible dir name
 	char name_kin[40];
@@ -182,9 +196,26 @@ int main(int argc,char *argv[]) {
 	char name_temp_part[50];
 	char name_all_condition[50];
 	char name_relation_heat_work[50];
+    
+
+
+    /*定常からスタートするためのファイルたち*/
+    char name_rx_init[50];
+    char name_ry_init[50];
+    char name_vx_init[50];
+    char name_vy_init[50];
+    char name_ax_init[50];
+    char name_ay_init[50];
+    char name_rx_b_init[50];
+    char name_ry_b_init[50];
+    char name_vx_b_init[50];
+    char name_vy_b_init[50];
+    char name_ax_b_init[50];
+    char name_ay_b_init[50];
     char name_init[50];
-    char name_initarray[50];
+
 	const char* plotdata="./plotdata/m2a_temp";
+	const char* initpath="./plotdata/initdata/m2a_temp";
 	const char* c_kin="/kin.dat";
 	const char* c_pot="/pot.dat";
 	const char* c_tot="/tot.dat";
@@ -201,14 +232,29 @@ int main(int argc,char *argv[]) {
 	const char* c_temp_part="/temp_part.dat";
 	const char* c_all_condition="/all_condition.dat";
 	const char* c_relation_heat_work="/heat_and_work.dat";
-    const char* c_makeinit="/init.dat";
-    const char* c_initarray="/initarray.dat";
+
+    /*定常状態読み込みファイル*/
+    const char* c_rx_init="/rx_init.dat";
+    const char* c_ry_init="/ry_init.dat";
+    const char* c_vx_init="/vx_init.dat";
+    const char* c_vy_init="/vy_init.dat";
+    const char* c_ax_init="/ax_init.dat";
+    const char* c_ay_init="/ay_init.dat";
+    const char* c_rx_b_init="/rx_b_init.dat";
+    const char* c_ry_b_init="/ry_b_init.dat";
+    const char* c_vx_b_init="/vx_b_init.dat";
+    const char* c_vy_b_init="/vy_b_init.dat";
+    const char* c_ax_b_init="/ax_b_init.dat";
+    const char* c_ay_b_init="/ay_b_init.dat";
+    const char* c_init="/init.dat";
+
+
 	//generate random seed from time
 	init_genrand((unsigned)time(NULL));
 
-	//const number
+	//static number
 	const double rho = 0.2;
-	const double dx = sqrt(1.0 / rho);
+	double dx = sqrt(1.0 / rho);
 	const double dy = dx;
 	const double lx = dx * Nx;
 	const double ly = dy * Ny;
@@ -225,6 +271,8 @@ int main(int argc,char *argv[]) {
 
 	int P_dummy=10*(1-probabirity);
 ////////////////////////////////////////////////
+
+
 	const double temp_h = 1.0;
 	const double temp_p = (temp_h + temp_l) * 0.5;
 	const double h = KIZAMI;
@@ -274,6 +322,14 @@ int main(int argc,char *argv[]) {
 	double sum_vy=0.0;
 	int pairlist[N][10];
 	int pairlist_innit[N][10];
+/*
+	//high speed parametor
+	const double l_gx = 0.448;
+	const double l_gy = l_gx;
+	const int n_gx = ceil(lx / l_gx) + 6;//袖領域のため
+	const int n_gy = ceil(ly / l_gy) + 6 + ceil(0.25*lx/l_gx);//袖領域のため
+	const int n_g_all = n_gx * n_gy;
+*/
 	//ぴったりにする
 	int bo=(lx/0.4);
 	double l_gx_d=lx/bo;
@@ -282,11 +338,19 @@ int main(int argc,char *argv[]) {
 	const int n_gx = ceil(lx / l_gx) +6 ;//袖領域のため
 	const int n_gy = ceil((ly / l_gy)+(0.25*lx)/l_gy)+6;//袖領域のため
 	const int n_g_all = n_gx * n_gy;
+
+
+
+
     int **g_map;
     g_map = (int**)malloc(sizeof(int*)*n_gy);
     for(i=0;i<n_gy;i++){
         g_map[i]=(int*)malloc(sizeof(int)*n_gx);
     }
+
+
+
+
 	int neighbor_list_row[] = { -3,-3,-3,
 							   -2,-2,-2,
 								-1,-1,-1,
@@ -330,9 +394,10 @@ int main(int argc,char *argv[]) {
 	double FY=0.0;
 
     //flywheel
-    const double rf=0.25*ly;//hankei
-    const int rhof=pow(10,pow_num);//density of fw
+    const double rf=0.25*lx;//hankei
+    const int rhof=2*pow(10,pow_num);//density of fw
     const int gamma=100;//dumping by rotarion
+    const double mf=M_PI*rf*rf*rhof;
     const double ia=0.5*M_PI*rhof*rf*rf*rf*rf;//inartia
 	const double ria=1/ia;
 
@@ -347,7 +412,7 @@ int main(int argc,char *argv[]) {
     double q_out_sum=0.0;
 
     //displacerpiston
-    int mdp = pow(10,pow_num);
+    int mdp=2*pow(10,pow_num);
     double rmdp=1/(double) mdp;
     double dpx=0.5*lx;
     double dpy0=0.5*ly-rf;
@@ -363,7 +428,7 @@ int main(int argc,char *argv[]) {
 	double drdy_b;
 
     //powerpiston
-    int mpp=pow(10,pow_num);
+    int mpp=2*pow(10,pow_num);
     double rmpp=1/(double) mpp;
     double ppx=0.5*lx;
     double ppy0=ly;
@@ -409,7 +474,6 @@ int main(int argc,char *argv[]) {
 
 	//work and thermalefficiency
 	double w=0.0;
-    double wTemp = 0.0;
 	double e=0.0;
 
 
@@ -426,9 +490,11 @@ int main(int argc,char *argv[]) {
 	double temp_d=0.0;
 	double temp_u=0.0;
 	double temp_all=0.0;
+	double temp_lis[NWRITE];
 	double press_d=0.0;
 	double press_u=0.0;
 	double press_all=0.0;
+	double press_lis[NWRITE];
 	int N_D=0;
 	int N_U=0;
 	int N_D_b=0;
@@ -483,14 +549,40 @@ int main(int argc,char *argv[]) {
     sprintf(vx_lis,"%s%s%s",vx_name,moge,text);
     sprintf(vy_lis,"%s%s%s",vy_name,moge,text);
 
+
+
+
+
+
+	//big array
+	double e_lis[NWRITE];
+    double omega_lis[NWRITE];
+    double theta_lis[NWRITE];
+	double t_lis[NWRITE];
+
 	//11/30追加コンテンツ
-	const double ack_rot=0.125*M_PI;
+    const int separateNum = 24;
+	const double ack_rot = 2* M_PI / 24;
     const double ack_circle =2*M_PI;
 	double rot=0.0;
     double circle=0.0;
 	int rot_num=0;
     int b_num=0;
     int circle_num=0;
+
+/*
+	double temp_d_lis[NWRITE];
+	double temp_u_lis[NWRITE];
+	double press_d_lis[NWRITE];
+	double press_u_lis[NWRITE];
+    int ND_lis[NWRITE];
+	int NU_lis[NWRITE];
+    double ppy_lis[NWRITE];
+    double dpy_lis[NWRITE];
+	double total_kin_lis[NWRITE];
+	double pot_lis[NWRITE];
+	double total_e_lis[NWRITE];
+*/
 
 	double temp_part_lis[NWRITE][PARTNUM];
 	double press_part_lis[NWRITE][PARTNUM];
@@ -511,40 +603,78 @@ int main(int argc,char *argv[]) {
 
 
 ///read vx,vy,file
+/*
     vx_read=fopen(vx_lis,"r");
     vy_read=fopen(vy_lis,"r");
+
     for (i=0;i<N;i++){
         fscanf(vx_read,"%lf",&vx_dummy);
         fscanf(vy_read,"%lf",&vy_dummy);
         vx[i]=vx_dummy;
         vy[i]=vy_dummy;
     }
+
     fclose(vx_read);
     fclose(vy_read);
-	k = 0;
-	for (i = 0;i < Nx;i++) {
-		for (j = 0;j < Ny;j++) {
-			rx[k] = i * dx + dx * 0.5;
-			ry[k] = j * dy + dy * 0.5;
-			ax[k] = 0.0;
-			ay[k] = 0.0;
-			k = k + 1;
-		}
-	}
+*/
+
+    sprintf(name_rx_init,"%s%d%s",initpath,(int) atof(argv[1]),c_rx_init);
+    sprintf(name_rx_b_init,"%s%d%s",initpath,(int) atof(argv[1]),c_rx_b_init);
+    sprintf(name_ry_init,"%s%d%s",initpath,(int) atof(argv[1]),c_ry_init);
+    sprintf(name_ry_b_init,"%s%d%s",initpath,(int) atof(argv[1]),c_ry_b_init);
+    sprintf(name_vx_init,"%s%d%s",initpath,(int) atof(argv[1]),c_vx_init);
+    sprintf(name_vx_b_init,"%s%d%s",initpath,(int) atof(argv[1]),c_vx_b_init);
+    sprintf(name_vy_init,"%s%d%s",initpath,(int) atof(argv[1]),c_vy_init);
+    sprintf(name_vy_b_init,"%s%d%s",initpath,(int) atof(argv[1]),c_vy_b_init);
+    sprintf(name_ax_init,"%s%d%s",initpath,(int) atof(argv[1]),c_ax_init);
+    sprintf(name_ax_b_init,"%s%d%s",initpath,(int) atof(argv[1]),c_ax_b_init);
+    sprintf(name_ay_init,"%s%d%s",initpath,(int) atof(argv[1]),c_ay_init);
+    sprintf(name_ay_b_init,"%s%d%s",initpath,(int) atof(argv[1]),c_ay_b_init);
+    sprintf(name_init,"%s%d%s",initpath,(int) atof(argv[1]),c_init);
+
+    rx_init=fopen(name_rx_init,"r");
+    ry_init=fopen(name_ry_init,"r");
+    rx_b_init=fopen(name_rx_b_init,"r");
+    ry_b_init=fopen(name_ry_b_init,"r");
+    vx_init=fopen(name_vx_init,"r");
+    vy_init=fopen(name_vy_init,"r");
+    vx_b_init=fopen(name_vx_b_init,"r");
+    vy_b_init=fopen(name_vy_b_init,"r");
+    ax_init=fopen(name_ax_init,"r");
+    ay_init=fopen(name_ay_init,"r");
+    ax_b_init=fopen(name_ax_b_init,"r");
+    ay_b_init=fopen(name_ay_b_init,"r");
+	init=fopen(name_init,"r");
+
+	double sample=10;
+	/*ファイル情報の読み取り*/
+    for (i=0;i<N;i++){
+        fscanf(rx_init,"%lf",rx+i);
+		fscanf(ry_init,"%lf",ry+i);
+        fscanf(rx_b_init,"%lf",rx_b+i);
+		fscanf(ry_b_init,"%lf",ry_b+i);
+        fscanf(vx_init,"%lf",vx+i);
+		fscanf(vy_init,"%lf",vy+i);
+		fscanf(vy_b_init,"%lf",vy_b+i);
+        fscanf(ax_init,"%lf",ax+i);
+		fscanf(ay_init,"%lf",ay+i);
+		fscanf(ay_b_init,"%lf",ay_b+i);
+    }
+    /*末尾のtemp_lは間違えがないように冗長化*/                                                                    	/*dpx,dpy,ppx,ppy,dpy_b,ppy_b,dpv,ppv,ppa,dpa,dwx,dwy,dwx_b,dwy_b,pwx,pwy,pwx_b,pwy_b,theta,omega,alpha*/
+	fscanf(init,"%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf",&dpx,&dpy,&ppx,&ppy,&dpy_b,&ppy_b,&dpv,&ppv,&ppa,&dpa,&dwx,&dwy,&dwx_b,&dwy_b,&pwx,&pwy,&pwx_b,&pwy_b,&theta,&omega,&alpha,&temp_l);
+	
     //initialize N_list
     for(i=0;i<N;i++){
         N_U_init[i]=-1;
         N_U_l[i]=-1;
     }
+
 	for (i = 0;i < N;i++) {
 		kin0 = kin0 + (vx[i] * vx[i] + vy[i] * vy[i]);
 	}
 	kin0 = kin0 * 0.5;
-    w0 = 0.5 * ia * omega_0 * omega_0;
-    double dispEne = 0.5 * mdp * dpv *dpv;//ディスプレーサピストンの運動エネルギー
-    double powerEne = 0.5 * mpp * ppv * ppv;//パワーピストンの運動エネルギー
-    double dispEne0 = dispEne;//ディスプレーサピストンの運動エネルギー
-    double powerEne0 = powerEne;//パワーピストンの運動エネルギー
+
+
 	gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 	l=0;
 	m=0;
@@ -572,25 +702,22 @@ velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D_b,&N_U_b,N_U_init,&temp_all);
 velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
 N_U_init_sum=int_array_sum(N_U_init);
 
-sprintf(name_kin,"%s%d%s",plotdata,(int) atof(argv[1]),c_kin);
-sprintf(name_pot,"%s%d%s",plotdata,(int) atof(argv[1]),c_pot);
-sprintf(name_tot,"%s%d%s",plotdata,(int) atof(argv[1]),c_tot);
-sprintf(name_ene,"%s%d%s",plotdata,(int) atof(argv[1]),c_ene);
-sprintf(name_dis,"%s%d%s",plotdata,(int) atof(argv[1]),c_dis);
-sprintf(name_pow,"%s%d%s",plotdata,(int) atof(argv[1]),c_pow);
-sprintf(name_ome,"%s%d%s",plotdata,(int) atof(argv[1]),c_ome);
-sprintf(name_the,"%s%d%s",plotdata,(int) atof(argv[1]),c_the);
-sprintf(name_e,"%s%d%s",plotdata,(int) atof(argv[1]),c_e);
-sprintf(name_mini,"%s%d%s",plotdata,(int) atof(argv[1]),c_mini);
-sprintf(name_press,"%s%d%s",plotdata,(int) atof(argv[1]),c_press);
-sprintf(name_temp,"%s%d%s",plotdata,(int) atof(argv[1]),c_temp);
-sprintf(name_press_part,"%s%d%s",plotdata,(int) atof(argv[1]),c_press_part);
-sprintf(name_temp_part,"%s%d%s",plotdata,(int) atof(argv[1]),c_temp_part);
-sprintf(name_all_condition,"%s%d%s",plotdata,(int) atof(argv[1]),c_all_condition);
-sprintf(name_relation_heat_work,"%s%d%s",plotdata,(int) atof(argv[1]),c_relation_heat_work);
-sprintf(name_init,"%s%d%s",plotdata,(int) atof(argv[1]),c_makeinit);
-sprintf(name_initarray,"%s%d%s",plotdata,(int) atof(argv[1]),c_initarray);
-
+sprintf(name_kin,"%s%d%s",plotdata,(int) temp_l,c_kin);
+sprintf(name_pot,"%s%d%s",plotdata,(int) temp_l,c_pot);
+sprintf(name_tot,"%s%d%s",plotdata,(int) temp_l,c_tot);
+sprintf(name_ene,"%s%d%s",plotdata,(int) temp_l,c_ene);
+sprintf(name_dis,"%s%d%s",plotdata,(int) temp_l,c_dis);
+sprintf(name_pow,"%s%d%s",plotdata,(int) temp_l,c_pow);
+sprintf(name_ome,"%s%d%s",plotdata,(int) temp_l,c_ome);
+sprintf(name_the,"%s%d%s",plotdata,(int) temp_l,c_the);
+sprintf(name_e,"%s%d%s",plotdata,(int) temp_l,c_e);
+sprintf(name_mini,"%s%d%s",plotdata,(int) temp_l,c_mini);
+sprintf(name_press,"%s%d%s",plotdata,(int) temp_l,c_press);
+sprintf(name_temp,"%s%d%s",plotdata,(int) temp_l,c_temp);
+sprintf(name_press_part,"%s%d%s",plotdata,(int) temp_l,c_press_part);
+sprintf(name_temp_part,"%s%d%s",plotdata,(int) temp_l,c_temp_part);
+sprintf(name_all_condition,"%s%d%s",plotdata,(int) temp_l,c_all_condition);
+sprintf(name_relation_heat_work,"%s%d%s",plotdata,(int) temp_l,c_relation_heat_work);
 mini_file=fopen(name_mini,"w");
 all_condition_file=fopen(name_all_condition,"w");
 efile = fopen(name_e,"w");
@@ -599,7 +726,8 @@ theta_file=fopen(name_the,"w");
 relation_heat_work=fopen(name_relation_heat_work,"w");
 //-------------start mainroop------------------
 	ts = omp_get_wtime();
-	for (t = 1;t <= NSTEPS;t++) {
+	for (t = 1;t <= NSTEPS;t++)
+	{
 		//save before data
 		for(i=0;i<N;i++){
 			rx_b[i]=rx[i];
@@ -608,24 +736,32 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 			ay_b[i]=ay[i];
 			N_U_l_b_lis[i]=N_U_l[i];
 		}
+
 		if (mini_b>mini){
 			fprintf(mini_file,"%lf\n",mini);
 			mini_b=mini;
 		}
-        dpy_b=dpy;	
-        dwx_b=dwx;
-        dwy_b=dwy;
-        ppy_b=ppy;	
-        N_U_l_b=N_U_l_sum;
-        double omega_b = omega;
+
+			dpy_b=dpy;	
+			dwx_b=dwx;
+			dwy_b=dwy;
+			ppy_b=ppy;	
+			N_U_l_b=N_U_l_sum;
+
+		//debug
+
 		//initialize
 		total_kin = 0.0;
 		total_e = 0.0;
 		if ((t-1)%NDEVIDE == 0){
 			t_write+=1;
+			t_lis[t_write-1] = t * h;
 			//圧力などの定義
 			partition(ry,vx,vy,ppy,temp_part_lis,press_part_lis,t_write);
 		}
+
+
+
 		//verlet
 		for (i = 0;i < N;i++) {
 			rx[i] = rx[i] + vx[i] * h + ax[i] * h2;
@@ -633,20 +769,27 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 			vx[i] = vx[i] + ax[i] * h * 0.5;
 			vy[i] = vy[i] + ay[i] * h * 0.5;
 		}
+
 		//make gmap and pairlist
 		for (i = 0;i < n_gy;i++) {
 			for (j = 0;j < n_gx;j++) {
 				g_map[i][j] = -1;
 			}
 		}
-		for (i = 0; i < N; i++) {
-			for (j = 0; j < 10; j++) {
+
+		for (i = 0;i < N;i++) {
+			for (j = 0;j < 10;j++) {
 				pairlist[i][j] = -1;
 			}
 		}
+
+
+
 		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
+
 		//cliculate force		
 		force(N, rx, ry, ax, ay, lx, ly, pairlist, rc2, &pot, &pot_ij, &mini);
+
 		//second verlet
 		for (i = 0;i < N;i++) {
 			vx[i] = vx[i] + ax[i] * h * 0.5;
@@ -667,6 +810,8 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		ppy+=ppv*h+0.5*ppa*h*h;
 		theta+=omega*h+0.5*alpha*h*h;
 		dtheta=omega*h+0.5*alpha*h*h;
+
+		//restraint dynamics
 
 		//about disp-p
 		dwx=0.5*lx+rf*sin(theta);
@@ -707,10 +852,12 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		dpv+=dpa*h*0.5+0.5*h*Ry1*rmdp;
 		ppv+=ppa*h*0.5+0.5*h*Ry2*rmpp;
 		omega+=0.5*h*alpha+0.5*(-Ry2*cos(theta)*h*rf)*ria;
+
 		//piston force
 		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw);
 		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_d,kin_d,&down_hit,&down_through,mdp,&delta_mom_u,&delta_kin_u,probabirity);
 		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_u,kin_u,&up_hit,&up_through,mdp,&delta_mom_d,&delta_kin_d,probabirity);
+
 		//It can be better
 		ppa=fpp*rmpp;
 		dpa=fdp*rmdp;
@@ -731,42 +878,41 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		dpv+=0.5*h*(Ry1_af)*rmdp;
 		ppv+=0.5*h*(Ry2_af)*rmpp;
 		omega+=0.5*h*(-Ry2_af*cos(theta))*rf*ria;
+
 		//boundary condition 
 		boundary(N, rx, lx);
+
 ///////temprature and pressure onthepiston under the piston/////////
+
 		velocity(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
+
 		press_all=temp_all*N/(lx*ppy);
 		press_d=temp_d*N_D/(lx*dpy);
 		press_u=temp_u*N_U/(lx*(ppy-dpy));
         N_U_l_sum=int_array_sum(N_U_l);
+
+
 		//caliclate kin-energy
 		for (i = 0;i < N;i++) {
 			total_kin += (vx[i] * vx[i] + vy[i] * vy[i]);
 		}
 		total_kin = total_kin * 0.5;
 		total_e = total_kin + pot;
-
-		if (t % nout == 0){
-			printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf,Qin:%lf,Qout:%lf,firstEne:%lf,difference:%lf\n", 
-            t * h, total_kin, pot, total_e,q_in,q_out,kin0,(kin0 /*+ w0 + dispEne0 + powerEne0*/) + (q_in + q_out) - (total_e /*+ wTemp + dispEne + powerEne*/));
-            printf("difference: %lf\n",w0 - wTemp);
-            printf("calcwork: %lf\n",w);
-        }
+			if (t % nout == 0){
+				printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf,momentum_vx:%lf,momentum_vy:%lf\n", t * h, total_kin, pot, total_e,sum_vx,sum_vy);
+	    }
 		//work and thermal efficiency
-		w += gamma * ia * (omega_b - omega) * dtheta;//仕事の合計
-        wTemp = 0.5 * ia * omega * omega;//運動エネルギー
-        dispEne = 0.5 * mdp * dpv * dpv;//DPのエネルギー
-        powerEne = 0.5 * mpp * ppv * ppv;//PPのエネルギー
+		w+=gamma*rf*omega*dtheta;
+		e=w/(0.5*ia*omega_0*omega_0+q_in);
 
 		rot=fabs(theta)-rot_num*ack_rot;
         circle=fabs(theta)-circle_num*ack_circle;
 		if (rot>ack_rot){
 			rot-=fabs(ack_rot);
-			fprintf(all_condition_file,"%lf    %lf    %lf    %lf    %lf    %lf\n",t*h,press_all,temp_all,ppy*lx,ppy,dpy);
+            //ppy*lx = V
+			fprintf(all_condition_file,"%lf    %lf    %lf    %lf    %lf    %lf    %d\n",t*h,press_all,temp_all,ppy*lx,ppy,dpy,separateNum);
 			rot_num+=1;
 		}
-
-
 		if (circle>ack_circle){
 			circle-=fabs(ack_circle);
 			circle_num+=1;
@@ -775,23 +921,21 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 			e=one_cycle_w/one_cycle_q_in;
 			fprintf(efile,"%lf    %lf\n",(double) t*h,e);
 		}
-
 	if (t%NDEVIDE==0){
 		fprintf(omega_file,"%lf    %lf\n",(double) t*h,omega);
 		fprintf(theta_file,"%lf    %lf\n",(double) t*h,theta);
 		fprintf(relation_heat_work,"%lf    %lf    %lf    %lf    %lf\n",((double) t*h),q_in,q_out,(q_in+q_out),w);
-	}
+    }
 }
 //end mainloop
-
 te = omp_get_wtime();
-e=w/q_in;//熱効率（仮）
 printf("time cost is %lf seconds\n", te - ts);
 printf("process time is:%lf\n",te-ts);
 printf("hit is :%d,through is %d\n",hit_piston,through_piston);
 printf("up_hit:%d,down_hit:%d\n",up_hit,down_hit);
 printf("up_through:%d,down_through:%d\n",up_through,down_through);
 printf("rotation num is : %d\n",circle_num);
+printf("%lf %lf\n",q_in,q_out);
 //free gmap
 for(i=0;i<n_gy;i++){
 	free(g_map[i]);
@@ -799,33 +943,26 @@ for(i=0;i<n_gy;i++){
 free(g_map);
 
 
-double makeinit_array[]={dpx,dpy,ppx,ppy,dpy_b,ppy_b,dpv,ppv,ppa,dpa,dwx,dwy,dwx_b,dwy_b,pwx,pwy,pwx_b,pwy_b,theta,omega,alpha,temp_l};
-int arr_len=sizeof(makeinit_array)/sizeof(double);
+//file output
 
-/*初期化ファイルの書き出し*/
-initarray=fopen(name_initarray,"w");
-for (i=0;i<N;i++){
-    fprintf(initarray,"%lf    ",rx[i]);
-    fprintf(initarray,"%lf    ",rx_b[i]);
-    fprintf(initarray,"%lf    ",ry[i]);
-    fprintf(initarray,"%lf    ",ry_b[i]);
-    fprintf(initarray,"%lf    ",vx[i]);
-    fprintf(initarray,"%lf    ",vy[i]);
-    fprintf(initarray,"%lf    ",vy_b[i]);
-    fprintf(initarray,"%lf    ",ax[i]);
-    fprintf(initarray,"%lf    ",ay[i]);
-    fprintf(initarray,"%lf    \n",ay_b[i]);
-}
-fclose(initarray);
 
-initfile = fopen(name_init,"w");
+//press_file=fopen(name_press,"w");
+//temp_file=fopen(name_temp,"w");
+//part_press_file=fopen(name_press_part,"w");
+//part_temp_file=fopen(name_temp_part,"w");
+/*
+kin_file = fopen(name_kin,"w");
+pot_file = fopen(name_pot,"w");
+tot_file = fopen(name_tot,"w");
+enegy_file=fopen(name_ene,"w");
+dis_p = fopen(name_dis,"w");
+pow_p = fopen(name_pow,"w");
+press_d_file=fopen(name_press_d,"w");
+press_u_file=fopen(name_press_u,"w");
+*/
 
-for(i=0;i<arr_len;i++){
-    if(i==arr_len-1) fprintf(initfile,"%lf",makeinit_array[i]);
-    else fprintf(initfile,"%lf,",makeinit_array[i]);
-}
 
-fclose(initfile);
+
 //file close
 fclose(all_condition_file);
 fclose(mini_file);
@@ -833,7 +970,19 @@ fclose(omega_file);
 fclose(theta_file);
 fclose(efile);
 fclose(relation_heat_work);
-
+fclose(rx_init);
+fclose(ry_init);
+fclose(rx_b_init);
+fclose(ry_b_init);
+fclose(vx_init);
+fclose(vy_init);
+fclose(vx_b_init);
+fclose(vy_b_init);
+fclose(ax_init);
+fclose(ay_init);
+fclose(ax_b_init);
+fclose(ay_b_init);
+fclose(init);
 //fclose(press_file);
 //fclose(temp_file);
 //fclose(part_press_file);
@@ -855,37 +1004,49 @@ fclose(press_u_file);
 //fprintf(lxly,"%lf    %lf",lx,ppy_max);
 //fclose(lxly);
 
-/*pythonでファイルの作成*/
-//int ret;
-//char python_exe[60];
-//const char* python_word="python make_init_py.py";
-//sprintf(python_exe,"%s %s%d",python_word,plotdata,(int) temp_l);
-//ret=system(python_exe);
-return 0;
+	return 0;
+
 }
+
+
+
+
+
+
 //prototype function after write
 void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int N_GX, int N_GY, int NEIGHBOR_ROW[], int NEIGHBOR_COL[], int NEITGHBOR_LEN, int PAIRLIST[][10], double LX, int **G_MAP) {
 	int i, j, k;
 	int gx_map;
 	int gy_map;
 	int partcle_counter;
+
 	for (i = 0;i < NP;i++) {
+
 		if (RX[i] >= LX) {
 			RX[i] = RX[i] - LX;
 		}
+
 		else if (RX[i] <= 0.0) {
 			RX[i] = RX[i] + LX;
 		}
+
 		gx_map = (int)(RX[i] / L_GX) + 3;
 		gy_map = N_GY - 4 - (int)(RY[i] / L_GY);//-1+3-6 (int)(RY[i] / L_GY) + 3
 		G_MAP[gy_map][gx_map] = i;
+
 	}
+
+
+
 	for (i = 0;i < N_GY;i++) {
 		for (j = 0;j < 3;j++) {
 			G_MAP[i][j] = G_MAP[i][N_GX - 6 + j];
+			G_MAP[i][j + N_GX - 3] = G_MAP[i][3 + j];
 		}
 	}
-	for (i = 3;i < N_GY -3;i++) {
+
+	for (i = 3;i < N_GY -3;i++)
+	 {
 		for (j = 3;j < N_GX - 3;j++) {
 			partcle_counter = 0;
 			if (G_MAP[i][j] != -1) {
@@ -895,30 +1056,42 @@ void gmap_create(int NP, double RX[], double RY[], double L_GX, double L_GY, int
 					{
 						PAIRLIST[G_MAP[i][j]][partcle_counter] = G_MAP[i + NEIGHBOR_ROW[k]][j + NEIGHBOR_COL[k]];
 						partcle_counter += 1;
+
 					}
 				}
+
 				PAIRLIST[G_MAP[i][j]][9] = partcle_counter;
 			}
 		}
 	}
+
+
+
 }
 
-void force_nos(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, double RC2, double* POT, double* POT_IJ, double* MINI) {
+void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], double RC2, double* POT, double* POT_IJ, double* MINI) {
+
 	int i, j;
+	int roop_num;
 	double rxij;
 	double ryij;
 	double r2;
 	double ir2, ir6;
 	double fx, fy;
+
+
 	for (i = 0;i < NP;i++) {
 		AX[i] = 0.0;
 		AY[i] = 0.0;
 	}
+
 	*POT = 0.0;
 	*POT_IJ = 0.0;
-	for (i = 0;i < NP-1;i++) {
-		for (j = i+1;j < NP;j++) {
-			rxij = RX[i] - RX[j];
+
+	for (i = 0;i < NP;i++) {
+		roop_num = PAIRLIST[i][9];
+		for (j = 0;j < roop_num;j++) {
+			rxij = RX[i] - RX[PAIRLIST[i][j]];
 
 			if (rxij >= 0.5 * LX) {
 				rxij = rxij - LX;
@@ -928,80 +1101,37 @@ void force_nos(int NP, double RX[], double RY[], double AX[], double AY[], doubl
 				rxij = rxij + LX;
 			}
 
-			ryij = RY[i] - RY[j];
-
-			r2 = rxij * rxij + ryij * ryij;
-
-			ir2 = 1.0 / r2;
-			ir6 = ir2 * ir2 * ir2;
-
-			if (r2 >= RC2) {
-				fx = 0.0;
-				fy = 0.0;
-				*POT_IJ = 0.0;
-			}else{
-				fx = 24.0 * ir6 * (2.0 * ir6 - 1.0) * ir2 * rxij;
-				fy = 24.0 * ir6 * (2.0 * ir6 - 1.0) * ir2 * ryij;
-				*POT_IJ = (4.0 * (ir6 * ir6 - ir6) + 1.0);
-				if (*MINI > sqrt(r2)) {
-					*MINI = sqrt(r2);
-				}
-			}
-			AX[i] = AX[i] + fx;
-			AY[i] = AY[i] + fy;
-            AX[j] = AX[j] - fx;
-			AY[j] = AY[j] - fy;
-			*POT = *POT + *POT_IJ;
-		}
-	}
-}
-
-void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, int PAIRLIST[][10], double RC2, double* POT, double* POT_IJ, double* MINI) {
-	int i, j;
-	int roop_num;
-	double rxij;
-	double ryij;
-	double r2;
-	double ir2, ir6;
-	double fx, fy;
-	for (i = 0;i < NP;i++) {
-		AX[i] = 0.0;
-		AY[i] = 0.0;
-	}
-	*POT = 0.0;
-	*POT_IJ = 0.0;
-	for (i = 0;i < NP;i++) {
-		roop_num = PAIRLIST[i][9];
-		for (j = 0;j < roop_num;j++) {
-			rxij = RX[i] - RX[PAIRLIST[i][j]];
-			if (rxij >= 0.5 * LX) {
-				rxij = rxij - LX;
-			} else if (rxij < -0.5 * LX) {
-				rxij = rxij + LX;
-			}
 			ryij = RY[i] - RY[PAIRLIST[i][j]];
+
 			r2 = rxij * rxij + ryij * ryij;
+
 			ir2 = 1.0 / r2;
 			ir6 = ir2 * ir2 * ir2;
+
 			if (r2 >= RC2) {
 				fx = 0.0;
 				fy = 0.0;
 				*POT_IJ = 0.0;
-			} else {
+			}else {
+
 				fx = 24.0 * ir6 * (2.0 * ir6 - 1.0) * ir2 * rxij;
 				fy = 24.0 * ir6 * (2.0 * ir6 - 1.0) * ir2 * ryij;
 				*POT_IJ = (4.0 * (ir6 * ir6 - ir6) + 1.0);
+
 				if (*MINI > sqrt(r2)) {
 					*MINI = sqrt(r2);
 				}
 			}
+
 			AX[i] = AX[i] + fx;
 			AY[i] = AY[i] + fy;
 			AX[PAIRLIST[i][j]] = AX[PAIRLIST[i][j]] - fx;
 			AY[PAIRLIST[i][j]] = AY[PAIRLIST[i][j]] - fy;
 			*POT = *POT + *POT_IJ;
+
 		}
 	}
+
 }
 
 
@@ -1015,21 +1145,30 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 	double vy_l=0.0;
 	int i;
 	for(i=0;i<NP;i++){
+
+
 		if(RY[i]<=0.5){
+			
 			*d_w=RY_B[i]-0.5;
 			h1=(*d_w)/fabs(VY[i]);
 			*h_ss=H-h1;
 			RY[i]=RY_B[i]+VY[i]*h1;
+
 			vy_l=VY[i];
 			VY[i]=canon_b(TEMP_L);//canon_b(TEMP_L)
 			RY[i]+=VY[i]*(*h_ss);
 			dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
+
 			if(dq>=0.0){
 				*Q_IN+=dq;
 			}else{
 				*Q_OUT+=dq;
 			}
+
 		}
+
+
+
 		if(RY[i]>=PPY-0.5){
 			*d_w=(PPY-0.5)-RY_B[i];
 			h1=*d_w/fabs(VY[i]-PPV);
@@ -1041,13 +1180,16 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 			fpu=-(VY[i]-vy_l)/H;
 			fpu_sum+=fpu;
 			dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
+
 			if(dq>=0.0){
 				*Q_IN+=dq;
 			}else{
 				*Q_OUT+=dq;
 			}
 		}
+
 	}
+
 		*FPP=fpu_sum;
 }
 
@@ -1071,6 +1213,7 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 
 	for(i=0;i<NP;i++){
 		if(RY_B[i]>=DPY_B+0.5 && RY[i]<DPY+0.5){
+
             //devide step h -> h1,h2 h1
 			rand_num=genrand_real3();
 			d_w=RY_B[i]-(DPY_B+0.5);
@@ -1083,20 +1226,38 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 			RY[i]=RY_B[i]+VY_B[i]*h1;
             vy_l=VY[i];
             //devide step h -> h1,h2 h2
-
-           if (rand_num<(1-PROBABIRITY)){//randnum < 1- P -> 反射
-/*				*HIT_PISTON+=1;
+           if (rand_num<(1-PROBABIRITY)){
+				*HIT_PISTON+=1;
     			*k+=1;
 				Momentum_u[0]=VY[i]+MDP*(*DPV);
 				Kin_u[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
+
 				VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
               *DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
+
+//				VY[i]=-VY_B[i]+2*(*DPV);
+
+				Momentum_u[1]=VY[i]+MDP*(*DPV);
 				Kin_u[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
+
+				*delta_mom+=Momentum_u[1]-Momentum_u[0];
+				*delta_kin+=Kin_u[1]-Kin_u[0];
+				*delta_mom=(*delta_mom)/(*k);
+				*delta_kin=(*delta_kin)/(*k);
+
 				dd=VY[i]*h_ss;
 				RY[i]=RY[i]+dd;
 				fdu=-(VY[i]-VY_B[i])/H;
-				fdu_sum+=fdu;*/
-		    }else{              
+				fdu_sum+=fdu;
+				dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
+					if(dq>=0.0){
+						*Q_IN+=dq;
+					}else{
+						*Q_OUT+=dq;
+					}
+
+
+		    }else{
                 *j+=1;
 				*THROUGH_PISTON+=1;
                 VY[i]=-canon_b(TEMP_L);
@@ -1111,6 +1272,7 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 						*Q_OUT+=dq;
 					}                
             }
+
         }
 	}
 	*FDP=fdd_sum+fdu_sum;
@@ -1132,16 +1294,18 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 	double re_vel=0.0;
     for(i=0;i<N;i++){
     	if(RY_B[i]<=DPY_B-0.5 && RY[i]>DPY-0.5){
+
 			z=genrand_real3();
 			d_w=(DPY_B-0.5)-RY_B[i];
 			re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
 			re_vel=sqrt(re_vel);
 			h1=d_w/re_vel;
 			h_ss=fabs(H-h1);
+
 			RY[i]=RY_B[i]+VY_B[i]*h1;
 			DPY=DPY_B+(*DPV)*h1;
 			if (z<(1-PROBABIRITY)){
-/*     			*kk+=1;
+     			*kk+=1;
 				*HIT_PISTON+=1;
 				vy_l=VY[i];
 				Momentum_d[0]=VY[i]+MDP*(*DPV);
@@ -1172,7 +1336,9 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 					*Q_IN+=dq;
 				}else{
 					*Q_OUT+=dq;
-				}*/
+				}
+
+
 		    }else{
                 *jj+=1;
 				*THROUGH_PISTON+=1;
@@ -1194,7 +1360,6 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 	*FDP=fdd_sum+fdu_sum;
 
 }
-
 
 void velocity(int NP,double RY[],double VX[],double VY[],double DPY,double *TEMP_D,double *TEMP_U,int *ND,int*NU ,int N_U_list[N],double *TEMP){
 	*TEMP_D=0.0;

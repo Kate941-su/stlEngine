@@ -29,11 +29,11 @@ void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX
 
 void force_nos(int NP, double RX[], double RY[], double AX[], double AY[], double LX, double LY, double RC2, double* POT, double* POT_IJ, double* MINI);
 
-void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,double *FPP,double LY,double *h_ss,double *d_w);
+void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,double *FPP,double LY,double *h_ss,double *d_w,double *q_debug);
 
-void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY);
+void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY,double *q_debug);
 
-void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY);
+void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY,double *q_debug);
 
 void velocity(int NP,double RY[],double VX[],double VY[],double DPY,double *TEMP_D,double *TEMP_U,int *ND,int*NU ,int N_U_list[N],double *TEMP);
 
@@ -184,7 +184,7 @@ int main(int argc,char *argv[]) {
 	char name_relation_heat_work[50];
     char name_init[50];
     char name_initarray[50];
-	const char* plotdata="./plotdata/m2a_temp";
+	const char* plotdata="./plotdata/modelCinitProb";
 	const char* c_kin="/kin.dat";
 	const char* c_pot="/pot.dat";
 	const char* c_tot="/tot.dat";
@@ -341,6 +341,7 @@ int main(int argc,char *argv[]) {
     const double lsp=ls-2*rf;
 
 	//heatwall
+    double q_debug = 0.0;
     double q_in=0.0;
     double q_out=0.0;
     double q_in_sum=0.0;
@@ -708,15 +709,15 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		ppv+=ppa*h*0.5+0.5*h*Ry2*rmpp;
 		omega+=0.5*h*alpha+0.5*(-Ry2*cos(theta)*h*rf)*ria;
 		//piston force
-		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw);
-		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_d,kin_d,&down_hit,&down_through,mdp,&delta_mom_u,&delta_kin_u,probabirity);
-		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_u,kin_u,&up_hit,&up_through,mdp,&delta_mom_d,&delta_kin_d,probabirity);
+		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw,&q_debug);
+		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_d,kin_d,&down_hit,&down_through,mdp,&delta_mom_u,&delta_kin_u,probabirity,&q_debug);
+		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,&h1_d,momentum_u,kin_u,&up_hit,&up_through,mdp,&delta_mom_d,&delta_kin_d,probabirity,&q_debug);
 		//It can be better
 		ppa=fpp*rmpp;
 		dpa=fdp*rmdp;
 		dpv+=0.5*h*dpa;
 		ppv+=0.5*h*ppa;
-		alpha=-gamma*omega*ria;
+		alpha=-gamma*rf*omega*ria;
 		omega+=0.5*h*alpha;
 		lambda1_af=1e3*(dpv-rf*omega*sin(theta))*(dpy-dwy)*mu1/(ls*ls);
     	lambda2_af=1e3*(ppv-rf*omega*cos(theta))*(ppy-pwy)*mu2/(lsp*lsp);
@@ -753,7 +754,7 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
             printf("calcwork: %lf\n",w);
         }
 		//work and thermal efficiency
-		w += gamma * ia * (omega_b - omega) * dtheta;//仕事の合計
+		w += gamma * rf * omega * dtheta;//仕事の合計
         wTemp = 0.5 * ia * omega * omega;//運動エネルギー
         dispEne = 0.5 * mdp * dpv * dpv;//DPのエネルギー
         powerEne = 0.5 * mpp * ppv * ppv;//PPのエネルギー
@@ -764,9 +765,7 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 			rot-=fabs(ack_rot);
 			fprintf(all_condition_file,"%lf    %lf    %lf    %lf    %lf    %lf\n",t*h,press_all,temp_all,ppy*lx,ppy,dpy);
 			rot_num+=1;
-		}
-
-
+        }
 		if (circle>ack_circle){
 			circle-=fabs(ack_circle);
 			circle_num+=1;
@@ -787,7 +786,6 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 te = omp_get_wtime();
 e=w/q_in;//熱効率（仮）
 printf("time cost is %lf seconds\n", te - ts);
-printf("process time is:%lf\n",te-ts);
 printf("hit is :%d,through is %d\n",hit_piston,through_piston);
 printf("up_hit:%d,down_hit:%d\n",up_hit,down_hit);
 printf("up_through:%d,down_through:%d\n",up_through,down_through);
@@ -824,7 +822,6 @@ for(i=0;i<arr_len;i++){
     if(i==arr_len-1) fprintf(initfile,"%lf",makeinit_array[i]);
     else fprintf(initfile,"%lf,",makeinit_array[i]);
 }
-
 fclose(initfile);
 //file close
 fclose(all_condition_file);
@@ -833,34 +830,6 @@ fclose(omega_file);
 fclose(theta_file);
 fclose(efile);
 fclose(relation_heat_work);
-
-//fclose(press_file);
-//fclose(temp_file);
-//fclose(part_press_file);
-//fclose(part_temp_file);
-/*
-fclose(kin_file);
-fclose(pot_file);
-fclose(tot_file);
-fclose(enegy_file);
-fclose(dis_p);
-fclose(pow_p);
-fclose(press_d_file);
-fclose(press_u_file);
-*/
-//debugfile
-
-
-//lxly=fopen("./plotdata/pack2_wt/lxly.dat","w");
-//fprintf(lxly,"%lf    %lf",lx,ppy_max);
-//fclose(lxly);
-
-/*pythonでファイルの作成*/
-//int ret;
-//char python_exe[60];
-//const char* python_word="python make_init_py.py";
-//sprintf(python_exe,"%s %s%d",python_word,plotdata,(int) temp_l);
-//ret=system(python_exe);
 return 0;
 }
 //prototype function after write
@@ -1007,7 +976,7 @@ void force(int NP, double RX[], double RY[], double AX[], double AY[], double LX
 
 
 
-void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,double *FPP,double LY,double *h_ss,double *d_w){
+void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,double *FPP,double LY,double *h_ss,double *d_w,double *q_debug){
 	double dq=0.0;
 	double fpu=0.0;
 	double fpu_sum=0.0;
@@ -1021,9 +990,10 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 			*h_ss=H-h1;
 			RY[i]=RY_B[i]+VY[i]*h1;
 			vy_l=VY[i];
-			VY[i]=canon_b(TEMP_L);//canon_b(TEMP_L)
+			VY[i]=canon_b(TEMP_L);
 			RY[i]+=VY[i]*(*h_ss);
 			dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
+            *q_debug += dq;
 			if(dq>=0.0){
 				*Q_IN+=dq;
 			}else{
@@ -1041,6 +1011,7 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 			fpu=-(VY[i]-vy_l)/H;
 			fpu_sum+=fpu;
 			dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
+            *q_debug += dq;
 			if(dq>=0.0){
 				*Q_IN+=dq;
 			}else{
@@ -1054,7 +1025,7 @@ void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN
 
 
 
-void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY){
+void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_u[2],double Kin_u[2],int *k,int *j,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY,double *q_debug){
 	double dq=0.0;
 	double fdu=0.0;
 	double fdu_sum=0.0;
@@ -1069,7 +1040,7 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 	int i;
 	double re_vel=0.0;
 
-	for(i=0;i<NP;i++){
+	for(i=0;i<N;i++){
 		if(RY_B[i]>=DPY_B+0.5 && RY[i]<DPY+0.5){
             //devide step h -> h1,h2 h1
 			rand_num=genrand_real3();
@@ -1077,46 +1048,32 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 			re_vel=(VY_B[i]-(*DPV))*(VY_B[i]-(*DPV));
 			re_vel=sqrt(re_vel);
 			h1=d_w/re_vel;
-			if (h1<0){printf("\nup:%lf\n",h1);}
-            *H1_D=h1;
 			h_ss=fabs(H-h1);
 			RY[i]=RY_B[i]+VY_B[i]*h1;
+            DPY=DPY_B+(*DPV)*h1;
             vy_l=VY[i];
-            //devide step h -> h1,h2 h2
-
-           if (rand_num<(1-PROBABIRITY)){//randnum < 1- P -> 反射
-/*				*HIT_PISTON+=1;
-    			*k+=1;
-				Momentum_u[0]=VY[i]+MDP*(*DPV);
-				Kin_u[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
-				VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
-              *DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
-				Kin_u[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
-				dd=VY[i]*h_ss;
-				RY[i]=RY[i]+dd;
-				fdu=-(VY[i]-VY_B[i])/H;
-				fdu_sum+=fdu;*/
-		    }else{              
+            if (rand_num < (1 - PROBABIRITY)) {         
                 *j+=1;
-				*THROUGH_PISTON+=1;
+                *THROUGH_PISTON+=1;
                 VY[i]=-canon_b(TEMP_L);
-				dd=VY[i]*h_ss;
-				RY[i]=RY[i]+dd;
-				fdu=-(VY[i]-VY_B[i])*H_REV;
-				fdu_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
-					if(dq>=0.0){
-						*Q_IN+=dq;
-					}else{
-						*Q_OUT+=dq;
-					}                
+                dd=VY[i]*h_ss;
+                RY[i]=RY[i]+dd;
+                fdu=-(VY[i]-vy_l)*H_REV;
+                fdu_sum+=fdu;
+                dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
+                *q_debug += dq;
+                if(dq>=0.0){
+                    *Q_IN+=dq;
+                }else{
+                    *Q_OUT+=dq;
+                }                
             }
-        }
-	}
+	    }
+    }
 	*FDP=fdd_sum+fdu_sum;
 }
 	
-void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY){
+void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,double *H1_D,double Momentum_d[2],double Kin_d[2],int *kk,int *jj,double MDP,double *delta_mom,double *delta_kin,double PROBABIRITY,double *q_debug){
 	double dq=0.0;
 	double fdu=0.0;
 	double fdu_sum=0.0;
@@ -1140,59 +1097,25 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 			h_ss=fabs(H-h1);
 			RY[i]=RY_B[i]+VY_B[i]*h1;
 			DPY=DPY_B+(*DPV)*h1;
-			if (z<(1-PROBABIRITY)){
-/*     			*kk+=1;
-				*HIT_PISTON+=1;
-				vy_l=VY[i];
-				Momentum_d[0]=VY[i]+MDP*(*DPV);
-				Kin_d[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
-
-				VY[i]=-((MDP-1)/(MDP+1))*VY_B[i]+((2*MDP)/(MDP+1))*(*DPV);
-                *DPV=((MDP-1)/(MDP+1))*(*DPV)+(2/(MDP+1))*vy_l;
-
-				Momentum_d[1]=VY[i]+MDP*(*DPV);
-				Kin_d[1]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
-
-				*delta_mom+=Momentum_d[1]-Momentum_d[0];
-				*delta_kin+=Kin_d[1]-Kin_d[0];
-				*delta_mom=(*delta_mom)/(*kk);
-				*delta_kin=(*delta_kin)/(*kk);
-
-				dd=VY[i]*h_ss;
-				if (VY[i]>0){
-				}
-				else{RY[i]=RY[i]+dd;}
-				if((*DPV)<0.0 && RY[i]>DPY-0.5){
-					printf("h_ss :%lf,d_w :%lf,re_vel:%lf,h1:%lf,vy_b:%lf,dpv:%lf\n",h_ss,d_w,re_vel,h1,VY_B[i],*DPV);
-					}
-				fdd=-(VY[i]-vy_l)*H_REV;
-				fdd_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
-				if(dq>=0.0){
-					*Q_IN+=dq;
-				}else{
-					*Q_OUT+=dq;
-				}*/
-		    }else{
+            vy_l=VY[i];         
+			if (z<(1-PROBABIRITY))
                 *jj+=1;
 				*THROUGH_PISTON+=1;
                 VY[i]=canon_b(TEMP_H);
 				dd=VY[i]*h_ss;
 				RY[i]=RY[i]+dd;
-				fdu=-(VY[i]-VY_B[i])*H_REV;
+				fdu=-(VY[i]-vy_l)*H_REV;
 				fdu_sum+=fdu;
-				dq=0.5*(VY[i]*VY[i]-VY_B[i]*VY_B[i]);
-					if(dq>=0.0){
-						*Q_IN+=dq;
-					}else{
-						*Q_OUT+=dq;
-					}                     
-            }
-
+				dq=0.5*(VY[i] * VY[i] - vy_l * vy_l);
+                *q_debug += dq;
+                if(dq>=0.0){
+                    *Q_IN+=dq;
+                }else{
+                    *Q_OUT+=dq;
+                }                     
         }
     }
 	*FDP=fdd_sum+fdu_sum;
-
 }
 
 

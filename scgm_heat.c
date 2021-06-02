@@ -1,6 +1,4 @@
-//動的確保できた
-//とりあえず静的な二次元配列を確保しておく
-
+//5/27
 
 //This file is able to use only remote
 #include <stdio.h>
@@ -11,11 +9,11 @@
 #include "MT.h"
 #include <time.h>
 
-#define Nx 15
-#define Ny 30
+#define Nx 2
+#define Ny 1
 #define N (Nx*Ny)
-#define NSTEPS 200000
-#define NDEVIDE 2000
+#define NSTEPS 1000000
+#define NDEVIDE 1000
 #define NWRITE (NSTEPS/NDEVIDE)
 
 //prototype function
@@ -73,7 +71,7 @@ void elastic(int NP, double RY[], double VY[], double LY,double *QIN,double *QOU
 	}
 }
 
-void heatwall(int NP, double RY[], double VY[], double LY,double TEMP_L,double TEMP_H,double *Q_IN,double *Q_OUT){
+bool heatwall(int NP, double RY[], double VY[], double LY,double TEMP_L,double TEMP_H,double *Q_IN,double *Q_OUT){
 	int i;
 	double dq=0.0;
 	double vy_l=0.0;
@@ -88,7 +86,6 @@ void heatwall(int NP, double RY[], double VY[], double LY,double TEMP_L,double T
 
 			}else{
 				*Q_OUT+=dq;
-
 			}
 		}
 
@@ -96,18 +93,25 @@ void heatwall(int NP, double RY[], double VY[], double LY,double TEMP_L,double T
             vy_l=VY[i];
 			VY[i] = canon_b(TEMP_L);
 			dq=0.5*(VY[i]*VY[i]-vy_l*vy_l);
-
 			if(dq>=0.0){
 				*Q_IN+=dq;
-
 			}else{
 				*Q_OUT+=dq;
-
 			}
 		}
 	}
+    return dq == 0.0 ? true : false;
 }
 
+//粒子位置をファイルに書き込む
+void writeParticlePos(FILE* rx_list, FILE* ry_list, double* rx, double* ry) {
+    for (int i = 0; i < N; i++) {
+        fprintf(rx_list , "%lf  ", rx[i]);
+        fprintf(ry_list , "%lf  ", ry[i]);
+    }
+    fprintf(rx_list, "\n");
+    fprintf(ry_list, "\n");
+}
 
 int main(void) {
 	//FILEopen
@@ -136,7 +140,7 @@ int main(void) {
 	const double temp_l = 10.0;
 	const double temp_h = 1.0;
 	const double temp_p = (temp_h + temp_l) * 0.5;
-	const double h = 1e-3;
+	const double h = 3e-4;
 	const double h2 = 0.5 * h * h;
 	const int nout = NSTEPS / 10;
 	const int t_end = NSTEPS * h;
@@ -325,26 +329,36 @@ int main(void) {
 
 	gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 
-		m=0;
-		for (i=3;i<n_gy-3;i++){
-			for(j=3;j<n_gx-3;j++){
-				if(g_map[i][j]!=-1){
-					l+=1;
-				}
-			}
-		}
-		printf("particlenum:%d\n",l);
-		printf("kin0:%lf\n",kin0);
-		tot_file=fopen("./plotdata/totgmap2.dat","w");
-		rx_list=fopen("./plotdata/rx_list.dat","w");
-		ry_list=fopen("./plotdata/ry_list.dat","w");
-		ax_list=fopen("./plotdata/ax_list.dat","w");
-		ay_list=fopen("./plotdata/ay_list.dat","w");
-		pair=fopen("./plotdata/pairlist_kai.dat","w");
+    m=0;
+    for (i=3;i<n_gy-3;i++){
+        for(j=3;j<n_gx-3;j++){
+            if(g_map[i][j]!=-1){
+                l+=1;
+            }
+        }
+    }
+    printf("particlenum:%d\n",l);
+    printf("kin0:%lf\n",kin0);
+    tot_file=fopen("./plotdata/totgmap2.dat","w");
+    FILE* box = fopen("./plotdata/box.dat","w");
+    rx_list=fopen("./plotdata/rx_list.dat","w");
+    ry_list=fopen("./plotdata/ry_list.dat","w");
+    ax_list=fopen("./plotdata/ax_list.dat","w");
+    ay_list=fopen("./plotdata/ay_list.dat","w");
+    pair=fopen("./plotdata/pairlist_kai.dat","w");
+
+    //シリンダの大きさをファイルに書き込んでおく
+    fprintf(box,"%lf    %lf",lx , ly);
+    fclose(box);
+    bool isForce = false;
+    bool isHit = false;
 	//-------------start mainroop------------------
 
 	for (t = 1;t <= NSTEPS;t++)
 	{
+        if (pot > 0) {
+           isForce = true; 
+        }
         total_e_b=total_e;
 		//initialize
 		total_kin = 0.0;
@@ -353,6 +367,8 @@ int main(void) {
 		if ((t-1)%NDEVIDE==0){
 			t_write+=1;
 		}
+        isHit = heatwall(N, ry,vy,ly,temp_l,temp_h,&q_in,&q_out);//熱壁条件
+//        elastic(N ,ry, vy, ly, &q_in, &q_out);
 		//verlet
 		for (i = 0;i < N;i++) {
 			rx[i] = rx[i] + vx[i] * h + ax[i] * h2;
@@ -360,48 +376,9 @@ int main(void) {
 			vx[i] = vx[i] + ax[i] * h * 0.5;
 			vy[i] = vy[i] + ay[i] * h * 0.5;
 		}
-
-
-		//for animaiton
-/*
-		for (i=0;i<N;i++){
-			fprintf(rx_list,"%lf    ",rx[i]);
-		}
-		fprintf(rx_list,"\n");
-
-		for (i=0;i<N;i++){
-			fprintf(ry_list,"%lf    ",ry[i]);
-		}
-		fprintf(ry_list,"\n");
-		for (i=0;i<N;i++){
-			fprintf(ax_list,"%lf    ",ax[i]);
-		}
-		fprintf(ax_list,"\n");
-
-		for (i=0;i<N;i++){
-			fprintf(ay_list,"%lf    ",ay[i]);
-		}
-		fprintf(ay_list,"\n");
-*/
-
-
-
 //make gmap and pairlist
- 		boundary(N, rx, lx);
+        boundary(N, rx, lx);
 		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
-
-
-
-//debug zone
-
-		m=0;
-		for (i=3;i<n_gy-3;i++){
-			for(j=3;j<n_gx-3;j++){
-				if(g_map[i][j]!=-1){
-					m+=1;
-				}
-			}
-		}
 		//cliculate force		
 		force(N, rx, ry, ax, ay, lx, ly, pairlist, pairlist2 , rc2, &pot, &pot_ij, &mini,pair);
 
@@ -410,36 +387,34 @@ int main(void) {
 			vx[i] = vx[i] + ax[i] * h * 0.5;
 			vy[i] = vy[i] + ay[i] * h * 0.5;
 		}
-
-		//boundary condition 
-
-
-
-//        elastic(N,ry,vy,ly,&q_in,&q_out);
-        heatwall(N, ry,vy,ly,temp_l,temp_h,&q_in,&q_out);
 		//caliclate kin-energy
 		for (i = 0;i < N;i++) {
 			total_kin += (vx[i] * vx[i] + vy[i] * vy[i]);
 		}
-
 		total_kin = total_kin * 0.5;
 		total_e = total_kin + pot;
 		diff=total_e-total_e_b;
 		diff_tot+=diff;
+	//write in file
+    if (t % NDEVIDE == 0) {
+        fprintf(tot_file , "%lf    %lf    %lf\n" , t * h , kin0, total_e - q_in - q_out);
+        writeParticlePos(rx_list, ry_list, rx, ry);
+    }
 
-		//write in file
-
-//			fprintf (tot_file,"%lf\n",total_e);
-
+    double stat = diff_tot - q_in - q_out;//デバッグ 
+    if (isHit && isForce) {
+        printf("%lf   %lf\n",q_in + q_out + kin0,total_e);
+    }
 	if (t % nout == 0)
 		{
-			printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf\n", t * h, total_kin, pot, total_e);
-			printf("e stat: %lf\n",(diff_tot-q_in-q_out));
+        printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf\n", t * h, total_kin, pot, total_e);
+        printf("e stat: %lf\n",(diff_tot-q_in-q_out));
 		}
-
+    isHit = false;
+    isForce = false;
 	}
 
-	//end mainloop
+//end mainloop
 //close particle animation
 	fclose(rx_list);
 	fclose(ry_list);
@@ -448,65 +423,14 @@ int main(void) {
 	fclose(tot_file);
 	fclose(pair);
 	te = omp_get_wtime();
-
 //	printf("time cost is %lf seconds\n", te - ts);
 	l = 0;
-
     //free activated array
-
     for(i=0;i<n_gy;i++){
         free(g_map[i]);
     }
     free(g_map);
-
-//check the gmap
-/*
-	printf("mini:%lf\n", mini);
-	for (i = 0;i < n_gy;i++)
-	{
-		for (j = 0;j < n_gx;j++) {
-			if (g_map[i][j] != -1) {
-				l += 1;
-			}
-		}
-
-	}
-
-	for(i=0;i<N;i++){
-		for(j=0;j<10;j++){
-			printf("%d  ",pairlist[i][j]);
-		}
-		printf("\n");
-	}
-*/
-
-/*
-	printf("counter:%d\n", l);
-	printf("n_gx:%d\n", n_gx);
-	printf("n_gy:%d\n", n_gy);
-*/
-
-
-//file output
-/*
-kin_file = fopen("./plotdata/kin.dat","w");
-pot_file = fopen("./plotdata/pot.dat","w");
-tot_file = fopen("./plotdata/tot.dat","w");
-enegy_file=fopen("./plotdata/energy.dat","w");
-for(i=0;i<NWRITE;i++){
-		fprintf(kin_file,"%lf	%lf\n",t_lis[i],total_kin_lis[i]);
-		fprintf(pot_file,"%lf	%lf\n",t_lis[i],pot_lis[i]);
-		fprintf(tot_file,"%lf	%lf\n",t_lis[i],total_e_lis[i]);
-		fprintf(enegy_file,"%lf    %lf    %lf    %lf\n",t_lis[i],total_kin_lis[i],pot_lis[i],total_e_lis[i]);
-		
-}
-fclose(kin_file);
-fclose(pot_file);
-fclose(tot_file);
-fclose(enegy_file);
-*/
 	return 0;
-
 }
 
 

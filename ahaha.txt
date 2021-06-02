@@ -1,0 +1,22 @@
+particlenum:450
+kin0:1161.312573
+Time:9000.000000,Kinetic Energy:1132.717339,Potential Energy:28.587092,Total Energy:1161.304431
+e stat: -0.008142
+Time:18000.000000,Kinetic Energy:1126.976745,Potential Energy:34.332269,Total Energy:1161.309014
+e stat: -0.003559
+Time:27000.000000,Kinetic Energy:1123.805503,Potential Energy:37.519627,Total Energy:1161.325129
+e stat: 0.012556
+Time:36000.000000,Kinetic Energy:1115.890502,Potential Energy:45.416789,Total Energy:1161.307291
+e stat: -0.005282
+Time:45000.000000,Kinetic Energy:1131.298596,Potential Energy:30.010652,Total Energy:1161.309249
+e stat: -0.003325
+Time:54000.000000,Kinetic Energy:1132.702867,Potential Energy:28.595954,Total Energy:1161.298822
+e stat: -0.013752
+Time:63000.000000,Kinetic Energy:1138.487858,Potential Energy:22.837224,Total Energy:1161.325082
+e stat: 0.012508
+Time:72000.000000,Kinetic Energy:1134.386907,Potential Energy:26.939097,Total Energy:1161.326004
+e stat: 0.013431
+Time:81000.000000,Kinetic Energy:1123.245723,Potential Energy:38.070322,Total Energy:1161.316045
+e stat: 0.003472
+Time:90000.000000,Kinetic Energy:1143.534063,Potential Energy:17.772838,Total Energy:1161.306901
+e stat: -0.005672

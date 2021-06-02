@@ -716,7 +716,7 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
 		dpa=fdp*rmdp;
 		dpv+=0.5*h*dpa;
 		ppv+=0.5*h*ppa;
-		alpha=-gamma*omega*ria;
+		alpha=-gamma*rf*omega*ria;
 		omega+=0.5*h*alpha;
 		lambda1_af=1e3*(dpv-rf*omega*sin(theta))*(dpy-dwy)*mu1/(ls*ls);
     	lambda2_af=1e3*(ppv-rf*omega*cos(theta))*(ppy-pwy)*mu2/(lsp*lsp);
@@ -753,7 +753,7 @@ relation_heat_work=fopen(name_relation_heat_work,"w");
             printf("calcwork: %lf\n",w);
         }
 		//work and thermal efficiency
-		w += gamma * ia * (omega_b - omega) * dtheta;//仕事の合計
+		w += gamma * rf * omega * dtheta;//仕事の合計
         wTemp = 0.5 * ia * omega * omega;//運動エネルギー
         dispEne = 0.5 * mdp * dpv * dpv;//DPのエネルギー
         powerEne = 0.5 * mpp * ppv * ppv;//PPのエネルギー
@@ -1083,9 +1083,8 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 			RY[i]=RY_B[i]+VY_B[i]*h1;
             vy_l=VY[i];
             //devide step h -> h1,h2 h2
-
            if (rand_num<(1-PROBABIRITY)){//randnum < 1- P -> 反射
-/*				*HIT_PISTON+=1;
+				*HIT_PISTON+=1;
     			*k+=1;
 				Momentum_u[0]=VY[i]+MDP*(*DPV);
 				Kin_u[0]=0.5*VY[i]*VY[i]+0.5*MDP*(*DPV)*(*DPV);
@@ -1095,7 +1094,7 @@ void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 				dd=VY[i]*h_ss;
 				RY[i]=RY[i]+dd;
 				fdu=-(VY[i]-VY_B[i])/H;
-				fdu_sum+=fdu;*/
+				fdu_sum+=fdu;
 		    }else{              
                 *j+=1;
 				*THROUGH_PISTON+=1;
@@ -1141,7 +1140,7 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 			RY[i]=RY_B[i]+VY_B[i]*h1;
 			DPY=DPY_B+(*DPV)*h1;
 			if (z<(1-PROBABIRITY)){
-/*     			*kk+=1;
+     			*kk+=1;
 				*HIT_PISTON+=1;
 				vy_l=VY[i];
 				Momentum_d[0]=VY[i]+MDP*(*DPV);
@@ -1172,7 +1171,7 @@ void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N
 					*Q_IN+=dq;
 				}else{
 					*Q_OUT+=dq;
-				}*/
+				}
 		    }else{
                 *jj+=1;
 				*THROUGH_PISTON+=1;
