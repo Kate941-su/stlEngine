@@ -42,6 +42,7 @@ int main(int argc,char *argv[]) {
 	FILE *relation_heat_work;
     FILE *initarray;
     FILE *initfile;
+    FILE* metadata;
 
 	//flexible dir name
 	char name_kin[40];
@@ -62,6 +63,7 @@ int main(int argc,char *argv[]) {
 	char name_relation_heat_work[50];
     char name_init[50];
     char name_initarray[50];
+    char name_metadata[50];
 	const char* plotdata="./plotdata/modelCinitTemp";
 	const char* c_kin="/kin.dat";
 	const char* c_pot="/pot.dat";
@@ -81,6 +83,7 @@ int main(int argc,char *argv[]) {
 	const char* c_relation_heat_work="/heat_and_work.dat";
     const char* c_makeinit="/init.dat";
     const char* c_initarray="/initarray.dat";
+    const char* c_metadata = "/metadata.dat";
 	//generate random seed from time
 	init_genrand((unsigned)time(NULL));
 
@@ -189,10 +192,6 @@ int main(int argc,char *argv[]) {
 	double rc2 = rc * rc;
 	double mini = 1000.0;
 	double mini_b=1000.0;
-	//debug parameter
-	double FX=0.0;
-	double FY=0.0;
-
     //flywheel
     const double rf=0.25*ly;//hankei
     const int rhof=pow(10,pow_num);//density of fw
@@ -205,7 +204,6 @@ int main(int argc,char *argv[]) {
     const double lsp=ls-2*rf;
 
 	//heatwall
-    double q_debug = 0.0;
     double q_in=0.0;
     double q_out=0.0;
     double q_in_sum=0.0;
@@ -329,9 +327,7 @@ int main(int argc,char *argv[]) {
 	double hss=0.0;
 	double dw=0.0;
     double h1_d=0.0;
-
     //prepare read file
-    int num=N;
     char moge[5];
     char vx_name[] = "vx";
     char vy_name[] = "vy";
@@ -340,7 +336,7 @@ int main(int argc,char *argv[]) {
     char text[] =".dat";
     char vy_lis[30];
     char vx_lis[30];
-    sprintf(moge,"%d",num);
+    sprintf(moge,"%d",(int) N);
     sprintf(vx_lis,"%s%s%s",vx_name,moge,text);
     sprintf(vy_lis,"%s%s%s",vy_name,moge,text);
 
@@ -449,6 +445,7 @@ int main(int argc,char *argv[]) {
     sprintf(name_relation_heat_work,"%s%d%s",plotdata,(int) atof(argv[1]),c_relation_heat_work);
     sprintf(name_init,"%s%d%s",plotdata,(int) atof(argv[1]),c_makeinit);
     sprintf(name_initarray,"%s%d%s",plotdata,(int) atof(argv[1]),c_initarray);
+    sprintf(name_metadata,"%s%d%s",plotdata,(int) atof(argv[1]),c_metadata);
 
     mini_file=fopen(name_mini,"w");
     all_condition_file=fopen(name_all_condition,"w");
@@ -456,6 +453,11 @@ int main(int argc,char *argv[]) {
     omega_file=fopen(name_ome,"w");
     theta_file=fopen(name_the,"w");
     relation_heat_work=fopen(name_relation_heat_work,"w");
+    //メタデータ書き込み
+    //左から 横方向粒子、縦方向粒子、下壁の温度、透過確率
+    metadata = fopen(name_metadata, "w");
+    fprintf (metadata,"%lf,%lf",temp_l,probabirity);
+    fclose(metadata);
 //-------------start mainroop------------------
 	ts = omp_get_wtime();
 	for (t = 1;t <= NSTEPS;t++) {
@@ -503,7 +505,8 @@ int main(int argc,char *argv[]) {
 				pairlist[i][j] = -1;
 			}
 		}
-		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
+		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row,
+                     neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 		//cliculate force		
 		force(N, rx, ry, ax, ay, lx, ly, pairlist, rc2, &pot, &pot_ij, &mini);
 		//second verlet
@@ -567,13 +570,13 @@ int main(int argc,char *argv[]) {
 		ppv+=ppa*h*0.5+0.5*h*Ry2*rmpp;
 		omega+=0.5*h*alpha+0.5*(-Ry2*cos(theta)*h*rf)*ria;
 		//piston force
-		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw,&q_debug);
+		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw);
 		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,
                     dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,
-                    &h1_d,&down_hit,&down_through,mdp,probabirity,&q_debug);
+                    &h1_d,&down_hit,&down_through,mdp,probabirity);
 		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,
                     dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,
-                    &h1_d,&up_hit,&up_through,mdp,probabirity,&q_debug);
+                    &h1_d,&up_hit,&up_through,mdp,probabirity);
 		//It can be better
 		ppa=fpp*rmpp;
 		dpa=fdp*rmdp;

@@ -3,15 +3,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#define Nx 30
+#define Nx 50
 #define Ny 15
 #define PARTNUM 2
 #define N (Nx*Ny)
 //server
-#define NSTEPS 10000
+#define NSTEPS 1000000
 //local test
 //#define NSTEPS 200000
-#define NDEVIDE 1000
+#define NDEVIDE 100000
 #define NWRITE (NSTEPS/NDEVIDE)
 
 //////メルセンヌツイスタ///////
@@ -66,21 +66,21 @@ void force_nos(int NP, double RX[], double RY[], double AX[], double AY[], doubl
 //熱壁（下固定、上パワーピストン）
 void heatwall(double H,int NP,double RY[],double RY_B[],double VY[],double *Q_IN,
                 double *Q_OUT ,double PPY,double PPV,double TEMP_L,double TEMP_H,
-                double *FPP,double LY,double *h_ss,double *d_w,double *q_debug);
+                double *FPP,double LY,double *h_ss,double *d_w);
 
 //上から下へ粒子が通過するときに熱の計算を行う
 void piston_move_u(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],
                     double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,
                     double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,
                     int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,
-                    double *H1_D,int *k,int *j,double MDP,double PROBABIRITY,double *q_debug);
+                    double *H1_D,int *k,int *j,double MDP,double PROBABIRITY);
 
 //下から上へ粒子が通過するときに熱の計算を行う
 void piston_move_d(int NP,double RY[N],double RY_B[N],double VY[N],double VY_B[N],
                     double AY[],double H,double H_REV,double *Q_IN,double *Q_OUT,
                     double Q_IN_SUM,double Q_OUT_SUM,double DPY,double DPY_B,double *DPV,
                     int *HIT_PISTON,int *THROUGH_PISTON,double *FDP,double TEMP_L,double TEMP_H,
-                    double *H1_D,int *kk,int *jj,double MDP,double PROBABIRITY,double *q_debug);
+                    double *H1_D,int *kk,int *jj,double MDP,double PROBABIRITY);
 
 //温度の計算を行う
 void calculateTemleture(int NP,double RY[],double VX[],double VY[],double DPY,double *TEMP_D,

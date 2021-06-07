@@ -63,6 +63,7 @@ int main(int argc,char *argv[]) {
 	char name_relation_heat_work[50];
     char name_init[50];
     char name_initarray[50];
+    char name_metadata[50];
 	const char* plotdata="./plotdata/modelCinitN";
 	const char* c_kin="/kin.dat";
 	const char* c_pot="/pot.dat";
@@ -82,10 +83,10 @@ int main(int argc,char *argv[]) {
 	const char* c_relation_heat_work="/heat_and_work.dat";
     const char* c_makeinit="/init.dat";
     const char* c_initarray="/initarray.dat";
-	//generate random seed from time
+    const char* c_metadata = "/metadata.dat";
+	//乱数種生成
 	init_genrand((unsigned)time(NULL));
-
-	//const number
+	//固定値
 	const double rho = 0.2;
 	const double dx = sqrt(1.0 / rho);
 	const double dy = dx;
@@ -190,9 +191,6 @@ int main(int argc,char *argv[]) {
 	double rc2 = rc * rc;
 	double mini = 1000.0;
 	double mini_b=1000.0;
-	//debug parameter
-	double FX=0.0;
-	double FY=0.0;
 
     //flywheel
     const double rf=0.25*ly;//hankei
@@ -206,7 +204,6 @@ int main(int argc,char *argv[]) {
     const double lsp=ls-2*rf;
 
 	//heatwall
-    double q_debug = 0.0;
     double q_in=0.0;
     double q_out=0.0;
     double q_in_sum=0.0;
@@ -260,7 +257,6 @@ int main(int argc,char *argv[]) {
 	double pwx_b;
     double pwy=lsp+ppy0;
 	double pwy_b;
-
     //initial arg,vel,acc
     double theta=0.0;
     double omega_0=OMEGA_0;
@@ -268,22 +264,16 @@ int main(int argc,char *argv[]) {
     double alpha=0.0;
 	double dtheta=0.0;
     double wy_b=lscos+dpy0;
-
 	//work and thermalefficiency
 	double w=0.0;
     double wTemp = 0.0;
 	double e=0.0;
-
-
 	//追加
 	double one_cycle_w=0;
 	double one_cycle_q_in=0;
-
-
 	//hit or through(piston)
 	int hit_piston=0;
 	int through_piston=0;
-
 	//tempreture and pressure
 	double temp_d=0.0;
 	double temp_u=0.0;
@@ -301,8 +291,7 @@ int main(int argc,char *argv[]) {
     int N_U_l_b;
     int N_U_init_sum=0;
     int N_U_l_sum=0;
-
-	//retraint dynamics parametor
+	//拘束力学
 	double lambda1;
 	double lambda2;
 	double dpusai1[2];
@@ -319,20 +308,16 @@ int main(int argc,char *argv[]) {
 	double Ry1_af;
 	double Rx2_af;
 	double Ry2_af;
-
 	//force for each piston
 	double fp_sum=0.0;
 	double fd_sum=0.0;
 	double fpp=0.0;
 	double fdp=0.0;
-
 	//debug pameter
-	double hss=0.0;
-	double dw=0.0;
-    double h1_d=0.0;
-
+	double hss = 0.0;
+	double dw = 0.0;
+    double h1_d = 0.0;
     //prepare read file
-    int num=N;
     char moge[5];
     char vx_name[] = "vx";
     char vy_name[] = "vy";
@@ -341,10 +326,9 @@ int main(int argc,char *argv[]) {
     char text[] =".dat";
     char vy_lis[30];
     char vx_lis[30];
-    sprintf(moge,"%d",num);
+    sprintf(moge,"%d",(int) N);
     sprintf(vx_lis,"%s%s%s",vx_name,moge,text);
     sprintf(vy_lis,"%s%s%s",vy_name,moge,text);
-
 	//11/30追加コンテンツ
 	const double ack_rot=0.125*M_PI;
     const double ack_circle =2*M_PI;
@@ -353,25 +337,19 @@ int main(int argc,char *argv[]) {
 	int rot_num=0;
     int b_num=0;
     int circle_num=0;
-
 	double temp_part_lis[NWRITE][PARTNUM];
 	double press_part_lis[NWRITE][PARTNUM];
-
 	for (i = 0;i < N;i++) {
 		for (j = 0;j < 10;j++) {
 			pairlist[i][j] = -1;
 		}
 	}
-	
 	for (i = 0;i < n_gy;i++) {
 		for (j = 0;j < n_gx;j++) {
 			g_map[i][j] = -1;
 		}
 	}
-
 	const int neighbor_len = sizeof(neighbor_list_row) / sizeof(int);
-
-
 ///read vx,vy,file
     vx_read=fopen(vx_lis,"r");
     vy_read=fopen(vy_lis,"r");
@@ -418,20 +396,16 @@ int main(int argc,char *argv[]) {
 			}
 		}
 	}
-
 	for(i<0;i<NWRITE;i++){
 		for(j=0;j<PARTNUM;j++){
 			temp_part_lis[i][j]=0.0;
 			press_part_lis[i][j]=0.0;
 		}
 	}
-
-    printf("particlenum:%d\n",l);
     printf("kin0:%lf\n",kin0);
     calculateTemleture(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D_b,&N_U_b,N_U_init,&temp_all);
     calculateTemleture(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
     N_U_init_sum=int_array_sum(N_U_init);
-
     sprintf(name_kin,"%s%d%s",plotdata,(int) N,c_kin);
     sprintf(name_pot,"%s%d%s",plotdata,(int) N,c_pot);
     sprintf(name_tot,"%s%d%s",plotdata,(int) N,c_tot);
@@ -450,13 +424,18 @@ int main(int argc,char *argv[]) {
     sprintf(name_relation_heat_work,"%s%d%s",plotdata,(int) N,c_relation_heat_work);
     sprintf(name_init,"%s%d%s",plotdata,(int) N,c_makeinit);
     sprintf(name_initarray,"%s%d%s",plotdata,(int) N,c_initarray);
-
+    sprintf(name_metadata,"%s%d%s",plotdata,(int) N,c_metadata);
     mini_file=fopen(name_mini,"w");
     all_condition_file=fopen(name_all_condition,"w");
     efile = fopen(name_e,"w");
     omega_file=fopen(name_ome,"w");
     theta_file=fopen(name_the,"w");
     relation_heat_work=fopen(name_relation_heat_work,"w");
+    //メタデータ書き込み
+    //左から 横方向粒子、縦方向粒子、下壁の温度、透過確率
+    metadata = fopen(name_metadata, "w");
+    fprintf (metadata,"%lf,%lf",temp_l,probabirity);
+    fclose(metadata);
 //-------------start mainroop------------------
 	ts = omp_get_wtime();
 	for (t = 1;t <= NSTEPS;t++) {
@@ -504,7 +483,8 @@ int main(int argc,char *argv[]) {
 				pairlist[i][j] = -1;
 			}
 		}
-		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, neighbor_list_col, neighbor_len, pairlist, lx, g_map);
+		gmap_create(N, rx, ry, l_gx, l_gy, n_gx, n_gy, neighbor_list_row, 
+                        neighbor_list_col, neighbor_len, pairlist, lx, g_map);
 		//cliculate force		
 		force(N, rx, ry, ax, ay, lx, ly, pairlist, rc2, &pot, &pot_ij, &mini);
 		//second verlet
@@ -568,13 +548,14 @@ int main(int argc,char *argv[]) {
 		ppv+=ppa*h*0.5+0.5*h*Ry2*rmpp;
 		omega+=0.5*h*alpha+0.5*(-Ry2*cos(theta)*h*rf)*ria;
 		//piston force
-		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,&hss,&dw,&q_debug);
+		heatwall(h,N,ry,ry_b,vy,&q_in,&q_out,ppy,ppv,temp_l,temp_h,&fpp,ly,
+                    &hss,&dw);
 		piston_move_d(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,
                     dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,
-                    &h1_d,&down_hit,&down_through,mdp,probabirity,&q_debug);
+                    &h1_d,&down_hit,&down_through,mdp,probabirity);
 		piston_move_u(N,ry,ry_b,vy,vy_b,ay_b,h,h_rev,&q_in,&q_out,q_in_sum,q_out_sum,
                     dpy,dpy_b,&dpv,&hit_piston,&through_piston,&fdp,temp_l,temp_h,
-                    &h1_d,&up_hit,&up_through,mdp,probabirity,&q_debug);
+                    &h1_d,&up_hit,&up_through,mdp,probabirity);
 		//It can be better
 		ppa=fpp*rmpp;
 		dpa=fdp*rmdp;
@@ -598,7 +579,8 @@ int main(int argc,char *argv[]) {
 		//boundary condition 
 		boundary(N, rx, lx);
 ///////temprature and pressure onthepiston under the piston/////////
-		calculateTemleture(N,ry,vx,vy,dpy,&temp_d,&temp_u,&N_D,&N_U,N_U_l,&temp_all);
+		calculateTemleture(N,ry,vx,vy,dpy,&temp_d,&temp_u,
+                            &N_D,&N_U,N_U_l,&temp_all);
 		press_all=temp_all*N/(lx*ppy);
 		press_d=temp_d*N_D/(lx*dpy);
 		press_u=temp_u*N_U/(lx*(ppy-dpy));
@@ -609,7 +591,6 @@ int main(int argc,char *argv[]) {
 		}
 		total_kin = total_kin * 0.5;
 		total_e = total_kin + pot;
-
 		if (t % nout == 0){
 			printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf,Qin:%lf,Qout:%lf,firstEne:%lf,difference:%lf\n", 
             t * h, total_kin, pot, total_e,q_in,q_out,kin0,kin0 + (q_in + q_out) - (total_e));
@@ -693,6 +674,13 @@ fclose(omega_file);
 fclose(theta_file);
 fclose(efile);
 fclose(relation_heat_work);
+
+//pythonにinitファイルのパスを渡す
+char name_path[50];
+sprintf(name_path,"%s%d%s",plotdata,(int) N,"/pathName.dat");
+FILE* pathName = fopen(name_path, "w");
+fprintf(pathName,name_path);
+fclose(pathName);
 return 0;
 }
 
