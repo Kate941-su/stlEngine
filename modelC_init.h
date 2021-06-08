@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#define Nx 50
+#define Nx 30
 #define Ny 15
 #define PARTNUM 2
 #define N (Nx*Ny)

@@ -12,7 +12,7 @@
 #define Nx 2
 #define Ny 1
 #define N (Nx*Ny)
-#define NSTEPS 1000000
+#define NSTEPS 100000
 #define NDEVIDE 1000
 #define NWRITE (NSTEPS/NDEVIDE)
 
@@ -350,15 +350,15 @@ int main(void) {
     //シリンダの大きさをファイルに書き込んでおく
     fprintf(box,"%lf    %lf",lx , ly);
     fclose(box);
-    bool isForce = false;
-    bool isHit = false;
+ //   bool isForce = false;
+//    bool isHit = false;
 	//-------------start mainroop------------------
 
 	for (t = 1;t <= NSTEPS;t++)
 	{
-        if (pot > 0) {
-           isForce = true; 
-        }
+//        if (pot > 0) {
+//           isForce = true; 
+//        }
         total_e_b=total_e;
 		//initialize
 		total_kin = 0.0;
@@ -367,9 +367,10 @@ int main(void) {
 		if ((t-1)%NDEVIDE==0){
 			t_write+=1;
 		}
-        isHit = heatwall(N, ry,vy,ly,temp_l,temp_h,&q_in,&q_out);//熱壁条件
-//        elastic(N ,ry, vy, ly, &q_in, &q_out);
+//        isHit = heatwall(N, ry,vy,ly,temp_l,temp_h,&q_in,&q_out);//熱壁条件
+        elastic(N ,ry, vy, ly, &q_in, &q_out);
 		//verlet
+//        #pragma omp parallel for
 		for (i = 0;i < N;i++) {
 			rx[i] = rx[i] + vx[i] * h + ax[i] * h2;
 			ry[i] = ry[i] + vy[i] * h + ay[i] * h2;
@@ -402,16 +403,16 @@ int main(void) {
     }
 
     double stat = diff_tot - q_in - q_out;//デバッグ 
-    if (isHit && isForce) {
-        printf("%lf   %lf\n",q_in + q_out + kin0,total_e);
-    }
+//    if (isHit && isForce) {
+//        printf("%lf   %lf\n",q_in + q_out + kin0,total_e);
+//    }
 	if (t % nout == 0)
 		{
         printf("Time:%lf,Kinetic Energy:%lf,Potential Energy:%lf,Total Energy:%lf\n", t * h, total_kin, pot, total_e);
         printf("e stat: %lf\n",(diff_tot-q_in-q_out));
 		}
-    isHit = false;
-    isForce = false;
+//    isHit = false;
+//    isForce = false;
 	}
 
 //end mainloop
